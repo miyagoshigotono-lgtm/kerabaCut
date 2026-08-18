@@ -26,47 +26,49 @@
 
   /* ---------- 左パネル ---------- */
   .side{
-    width:404px;min-width:404px;background:var(--panel);border-right:1px solid var(--line);
+    width:525px;min-width:525px;background:var(--panel);border-right:1px solid var(--line);
     display:flex;flex-direction:column;
   }
-  .side header{padding:12px 14px 10px;border-bottom:1px solid var(--line)}
-  .side header h1{margin:0;font-size:16px;letter-spacing:.04em}
-  .side header p{margin:3px 0 0;font-size:11px;color:var(--sub)}
+  .side header{padding:15px 18px 13px;border-bottom:1px solid var(--line)}
+  .side header h1{margin:0;font-size:21px;letter-spacing:.04em}
+  .side header p{margin:4px 0 0;font-size:14px;color:var(--sub)}
   #ver{color:#9aa7b6}
-  #updBar{display:none;padding:8px 14px;background:#fff6d8;border-bottom:1px solid #e8d48a;
-          font-size:12.5px;color:#6b4e00;cursor:pointer}
+  #updBar{display:none;padding:10px 18px;background:#fff6d8;border-bottom:1px solid #e8d48a;
+          font-size:16px;color:#6b4e00;cursor:pointer}
   #updBar b{color:#8a5b00}
   @media print{ #updBar{display:none!important} }
-  .scroll{flex:1;overflow-y:auto;padding:10px 14px 30px}
+  .scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:13px 18px 39px}
 
-  fieldset{border:1px solid var(--line);border-radius:6px;margin:0 0 14px;padding:10px 12px 12px}
-  legend{font-size:13px;font-weight:700;color:var(--accent2);padding:0 6px;letter-spacing:.06em}
-  .row{display:flex;align-items:center;gap:7px;margin:7px 0}
-  .row label{flex:0 0 156px;font-size:14px;color:var(--ink);font-weight:600}
+  fieldset{border:1px solid var(--line);border-radius:6px;margin:0 0 18px;padding:13px 16px 16px;
+           min-inline-size:0;min-width:0}
+  legend{font-size:17px;font-weight:700;color:var(--accent2);padding:0 8px;letter-spacing:.06em}
+  .row{display:flex;align-items:center;gap:9px;margin:9px 0;min-width:0}
+  .row label{flex:0 0 203px;font-size:18px;color:var(--ink);font-weight:600}
   .row.wide label{flex:0 0 100%}
   input[type=text],input[type=number],select,textarea{
-    flex:1;min-width:0;padding:5px 7px;border:1px solid var(--line);border-radius:4px;
-    font-family:inherit;font-size:14px;background:#fbfcfe;color:var(--ink);
+    flex:1 1 0;min-width:0;width:0;padding:7px 9px;border:1px solid var(--line);border-radius:5px;
+    font-family:inherit;font-size:18px;background:#fbfcfe;color:var(--ink);
   }
   input[type=number]{text-align:right}
   input:focus,select:focus,textarea:focus{outline:2px solid #bcd8f7;border-color:var(--accent)}
   textarea{resize:vertical;min-height:52px;line-height:1.5}
-  .unit{flex:0 0 28px;font-size:12.5px;color:var(--ink)}
-  .chk{display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--ink);padding:3px 0;flex:0 0 calc(50% - 5px)}
-  .chk input{margin:0}
-  .chkgrid{display:flex;flex-wrap:wrap;gap:0 8px}
-  .hint{font-size:11px;color:var(--sub);line-height:1.6;margin:4px 0 0}
+  .unit{flex:0 0 36px;font-size:16px;color:var(--ink)}
+  .chk{display:flex;align-items:center;gap:8px;font-size:16px;color:var(--ink);padding:5px 0;
+       flex:0 0 calc(50% - 6px);min-width:0;line-height:1.35}
+  .chk input{margin:0;flex:0 0 auto;width:17px;height:17px}
+  .chkgrid{display:flex;flex-wrap:wrap;gap:0 12px}
+  .hint{font-size:14px;color:var(--sub);line-height:1.6;margin:6px 0 0}
 
   button{
-    font-family:inherit;font-size:12.5px;padding:6px 10px;border-radius:5px;cursor:pointer;
+    font-family:inherit;font-size:16px;padding:8px 13px;border-radius:6px;cursor:pointer;
     border:1px solid var(--line);background:#fff;color:var(--ink);
   }
   button:hover{background:#f2f6fb;border-color:#b9c8da}
   button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
   button.primary:hover{background:var(--accent2)}
-  button.mini{padding:3px 7px;font-size:11.5px}
+  button.mini{padding:5px 10px;font-size:15px;flex:0 0 auto}
 
-  .side footer{border-top:1px solid var(--line);padding:10px 14px;display:flex;gap:6px;flex-wrap:wrap;background:#f8fafc}
+  .side footer{border-top:1px solid var(--line);padding:13px 18px;display:flex;gap:8px;flex-wrap:wrap;background:#f8fafc}
   .side footer button{flex:1}
 
   /* ---------- 右プレビュー ---------- */
@@ -75,7 +77,7 @@
   .toolbar .sp{flex:1}
   .toolbar .zoom{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--sub)}
   .stage{flex:1;overflow:auto;padding:22px;display:flex;flex-direction:column;align-items:center;gap:22px}
-  .sheetwrap{position:relative}
+  .sheetwrap{position:relative;flex:0 0 auto}
   .sheet{background:#fff;box-shadow:0 3px 16px rgba(20,40,70,.20);transform-origin:top left}
   .sheet svg{display:block}
 
@@ -829,7 +831,7 @@ function applyZoom(){
     if(!svg) return;
     const wmm = parseFloat(svg.getAttribute('width')), hmm = parseFloat(svg.getAttribute('height'));
     let z = (sel==='fit')
-      ? Math.min((stage.clientWidth-60)/px(wmm), (stage.clientHeight-60)/px(hmm), 1.6)
+      ? Math.min((stage.clientWidth-70)/px(wmm), (stage.clientHeight-70)/px(hmm), 1)
       : parseFloat(sel);
     z = Math.max(.15, z);
     sheet.style.transform = `scale(${z})`;
@@ -890,7 +892,7 @@ $('btnReset').onclick = ()=>{
 /* =========================================================
    5. PWA（オフライン動作と自動更新）
    ========================================================= */
-const APP_VERSION = '1.0.4';
+const APP_VERSION = '1.0.5';
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
