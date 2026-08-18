@@ -1,0 +1,48 @@
+name: Deploy to GitHub Pages
+
+# main に入った時点（マージ／直接push）で自動的に配信し、
+# 全員のアプリが最新版に切り替わります。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: バージョンを刻む
+        run: |
+          set -e
+          VER="$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
+          echo "版: $VER"
+          sed -i "s/const APP_VERSION = '[^']*'/const APP_VERSION = '${VER}'/" app/index.html
+          sed -i "s/keraba-v[^']*'/keraba-v${VER}'/"                          app/sw.js
+          printf '{"version":"%s"}\n' "$VER" > app/version.json
+          # 3ファイルが一致しているか確認（ずれると更新ループになるため）
+          A=$(grep -o "APP_VERSION = '[^']*'" app/index.html | sed "s/.*'\(.*\)'/\1/")
+          B=$(grep -o "const VERSION = 'keraba-v[^']*'" app/sw.js | sed "s/.*keraba-v\(.*\)'/\1/")
+          C=$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' app/version.json)
+          echo "index.html=$A  sw.js=$B  version.json=$C"
+          test "$A" = "$B" -a "$B" = "$C"
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ケラバ図メーカー</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f4f9e">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ケラバ図">
+<style>
+  :root{
+    --bg:#eef1f5; --panel:#ffffff; --line:#d5dce5; --ink:#1c2430; --sub:#5b6878;
+    --accent:#1b6fd4; --accent2:#0f4f9e;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:"Yu Gothic UI","Meiryo","Hiragino Kaku Gothic ProN","MS PGothic",sans-serif;
+    font-size:13px;
+  }
+  .app{display:flex;height:100vh;overflow:hidden}
+
+  /* ---------- 左パネル ---------- */
+  .side{
+    width:404px;min-width:404px;background:var(--panel);border-right:1px solid var(--line);
+    display:flex;flex-direction:column;
+  }
+  .side header{padding:12px 14px 10px;border-bottom:1px solid var(--line)}
+  .side header h1{margin:0;font-size:16px;letter-spacing:.04em}
+  .side header p{margin:3px 0 0;font-size:11px;color:var(--sub)}
+  #ver{color:#9aa7b6}
+  #updBar{display:none;padding:8px 14px;background:#fff6d8;border-bottom:1px solid #e8d48a;
+          font-size:12.5px;color:#6b4e00;cursor:pointer}
+  #updBar b{color:#8a5b00}
+  @media print{ #updBar{display:none!important} }
+  .scroll{flex:1;overflow-y:auto;padding:10px 14px 30px}
+
+  fieldset{border:1px solid var(--line);border-radius:6px;margin:0 0 14px;padding:10px 12px 12px}
+  legend{font-size:13px;font-weight:700;color:var(--accent2);padding:0 6px;letter-spacing:.06em}
+  .row{display:flex;align-items:center;gap:7px;margin:7px 0}
+  .row label{flex:0 0 156px;font-size:14px;color:var(--ink);font-weight:600}
+  .row.wide label{flex:0 0 100%}
+  input[type=text],input[type=number],select,textarea{
+    flex:1;min-width:0;padding:5px 7px;border:1px solid var(--line);border-radius:4px;
+    font-family:inherit;font-size:14px;background:#fbfcfe;color:var(--ink);
+  }
+  input[type=number]{text-align:right}
+  input:focus,select:focus,textarea:focus{outline:2px solid #bcd8f7;border-color:var(--accent)}
+  textarea{resize:vertical;min-height:52px;line-height:1.5}
+  .unit{flex:0 0 28px;font-size:12.5px;color:var(--ink)}
+  .chk{display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--ink);padding:3px 0;flex:0 0 calc(50% - 5px)}
+  .chk input{margin:0}
+  .chkgrid{display:flex;flex-wrap:wrap;gap:0 8px}
+  .hint{font-size:11px;color:var(--sub);line-height:1.6;margin:4px 0 0}
+
+  button{
+    font-family:inherit;font-size:12.5px;padding:6px 10px;border-radius:5px;cursor:pointer;
+    border:1px solid var(--line);background:#fff;color:var(--ink);
+  }
+  button:hover{background:#f2f6fb;border-color:#b9c8da}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+  button.primary:hover{background:var(--accent2)}
+  button.mini{padding:3px 7px;font-size:11.5px}
+
+  .side footer{border-top:1px solid var(--line);padding:10px 14px;display:flex;gap:6px;flex-wrap:wrap;background:#f8fafc}
+  .side footer button{flex:1}
+
+  /* ---------- 右プレビュー ---------- */
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .toolbar{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--line)}
+  .toolbar .sp{flex:1}
+  .toolbar .zoom{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--sub)}
+  .stage{flex:1;overflow:auto;padding:22px;display:flex;flex-direction:column;align-items:center;gap:22px}
+  .sheetwrap{position:relative}
+  .sheet{background:#fff;box-shadow:0 3px 16px rgba(20,40,70,.20);transform-origin:top left}
+  .sheet svg{display:block}
+
+  /* ---------- 印刷 ---------- */
+  @media print{
+    html,body{background:#fff;height:auto;overflow:visible}
+    .app{display:block;height:auto;overflow:visible}
+    .side,.toolbar{display:none!important}
+    .main{display:block;overflow:visible}
+    .stage{padding:0;gap:0;display:block}
+    .sheetwrap{height:auto!important;width:auto!important}
+    .sheet{box-shadow:none;transform:none!important;break-after:page;page-break-after:always}
+    .sheetwrap:last-child .sheet{break-after:auto;page-break-after:auto}
+    body.p-dwg .w-ord{display:none!important}
+    body.p-ord .w-dwg{display:none!important}
+  }
+  .sheet.land{page:pgL}
+  .sheet.port{page:pgP}
+</style>
+<style id="pageStyle">@page pgL{size:A4 landscape;margin:0}@page pgP{size:A4 portrait;margin:0}</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ 入力 ============ -->
+  <div class="side">
+    <header>
+      <h1>ケラバ図メーカー</h1>
+      <p>数値を入れるとリアルタイムで作図 → A4でPDF出力　<span id="ver"></span></p>
+    </header>
+
+    <div id="updBar">新しいバージョンがあります。<b>ここをクリックして更新</b></div>
+
+    <div class="scroll" id="form">
+
+      <fieldset>
+        <legend>物件情報</legend>
+        <div class="row"><label>邸名</label><input type="text" id="name" value="" placeholder="◯◯様邸"></div>
+        <div class="row"><label>屋根勾配</label><input type="number" id="pitch" value="1.0" step="0.1" min="0.1" max="12"><span class="unit">寸</span></div>
+        <div class="row"><label>屋根材・色</label><input type="text" id="material" value="ガルバリウム"></div>
+        <div class="row"><label>鼻隠し板（水下）</label>
+          <select id="hanaShimo">
+            <option value="tatsu" selected>タツ</option>
+            <option value="kane">カネ</option>
+            <option value="cut2">勾配カット(上下)</option>
+            <option value="cut1">勾配カット(上部のみ)</option>
+            <option value="none">無し</option>
+          </select>
+        </div>
+        <div class="row"><label>鼻隠し板（水上）</label>
+          <select id="hanaKami">
+            <option value="tatsu" selected>タツ</option>
+            <option value="kane">カネ</option>
+            <option value="cut2">勾配カット(上下)</option>
+            <option value="cut1">勾配カット(上部のみ)</option>
+            <option value="none">無し</option>
+          </select>
+        </div>
+        <div class="row"><label>宛先</label><input type="text" id="client" value=""></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>部材寸法（前提条件）</legend>
+        <div class="row"><label>合板 厚</label><input type="number" id="tNoji" value="12" step="0.5"><span class="unit">mm</span></div>
+        <div class="row"><label>垂木 成</label><input type="number" id="hTaruki" value="60" step="1"><span class="unit">mm</span></div>
+        <div class="row"><label>破風板 厚</label><input type="number" id="tHafu" value="30" step="1"><span class="unit">mm</span></div>
+        <div class="row"><label>破風板 成</label><input type="number" id="wHafu" value="150" step="1"><span class="unit">mm</span></div>
+        <div class="row"><label>鼻隠し 厚</label><input type="number" id="tHana" value="30" step="1"><span class="unit">mm</span></div>
+        <div class="row"><label>鼻隠し 成</label><input type="number" id="hHanaOrder" value="" placeholder="自動" step="0.1"><button class="mini" type="button" id="btnCalcHana">計算</button><span class="unit">mm</span></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>母屋</legend>
+        <div class="row"><label>母屋 寸法（角）</label><input type="number" id="moyaSize" value="105" step="1"><span class="unit">mm</span></div>
+        <div class="row"><label>垂木欠き（母屋芯から）</label><input type="number" id="notchRef" value="22.5" step="0.5"><span class="unit">mm</span></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>図の範囲・合板の出</legend>
+        <div class="row"><label>全長（鼻隠し外面間）</label><input type="number" id="total" value="500" step="10"><span class="unit">mm</span></div>
+        <div class="row"><label>合板の出（水下）</label><input type="number" id="ovShimo" value="82" step="1"><span class="unit">mm</span></div>
+        <div class="row"><label>合板の出（水上）</label><input type="number" id="ovKami" value="58" step="1"><span class="unit">mm</span></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>ケラバカット</legend>
+        <div class="row"><label>クリアランス</label><input type="number" id="clearance" value="0" step="1" min="0"><span class="unit">mm</span></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>表示・寸法線</legend>
+        <div class="chkgrid">
+          <label class="chk"><input type="checkbox" id="dHana" checked>鼻隠し寸法</label>
+          <label class="chk"><input type="checkbox" id="dThick" checked>鼻隠し厚</label>
+          <label class="chk"><input type="checkbox" id="dMoya" checked>ケラバカット寸法</label>
+          <label class="chk"><input type="checkbox" id="dShort" checked>ケラバカット(短い方)</label>
+          <label class="chk"><input type="checkbox" id="dClear" checked>クリアランス寸法</label>
+          <label class="chk"><input type="checkbox" id="dHatch" checked>ケラバカット</label>
+          <label class="chk"><input type="checkbox" id="d225" checked>芯から22.5</label>
+          <label class="chk"><input type="checkbox" id="dMoyaW" checked>母屋寸法</label>
+          <label class="chk"><input type="checkbox" id="dCenter" checked>母屋芯線</label>
+          <label class="chk"><input type="checkbox" id="dHafuW" checked>破風板寸法</label>
+          <label class="chk"><input type="checkbox" id="dTaruki" checked>垂木成</label>
+          <label class="chk"><input type="checkbox" id="dNoji" checked>合板厚</label>
+          <label class="chk"><input type="checkbox" id="dOver" checked>合板の出</label>
+          <label class="chk"><input type="checkbox" id="dSlope" checked>勾配マーク</label>
+        </div>
+      </fieldset>
+
+
+    </div>
+
+    <footer>
+      <p class="hint" style="flex:0 0 100%;margin:0 0 4px">
+        印刷ダイアログで <b>送信先＝「PDFに保存」</b>、<b>用紙＝A4</b>、<b>余白＝なし（既定）</b> にすると原寸で出力できます。
+      </p>
+      <button id="btnReset">既定値に戻す</button>
+      <button id="btnPrintDwg">ケラバ図PDF</button>
+      <button id="btnPrintOrd">発注書PDF</button>
+      <button class="primary" id="btnPrintBoth">両方PDF</button>
+    </footer>
+  </div>
+
+  <!-- ============ プレビュー ============ -->
+  <div class="main">
+    <div class="toolbar">
+      <strong style="font-size:13px">プレビュー</strong>
+      <span id="pgLabel" style="color:var(--sub);font-size:12px"></span>
+      <span class="sp"></span>
+      <div class="zoom">
+        表示倍率
+        <select id="zoom">
+          <option value="fit" selected>ウィンドウに合わせる</option>
+          <option value="0.5">50%</option>
+          <option value="0.75">75%</option>
+          <option value="1">100%</option>
+          <option value="1.5">150%</option>
+        </select>
+      </div>
+    </div>
+    <div class="stage" id="stage">
+      <div class="sheetwrap w-dwg" id="wrap"><div class="sheet land" id="sheet"></div></div>
+      <div class="sheetwrap w-ord" id="wrapOrd"><div class="sheet port" id="sheetOrd"></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* =========================================================
+   1. パラメータ
+   ========================================================= */
+const FIELDS = {
+  name:'text', pitch:'num', material:'text', client:'text',
+  tNoji:'num', hTaruki:'num', tHafu:'num', wHafu:'num', tHana:'num', hHanaOrder:'num',
+  moyaSize:'num', notchRef:'num',
+  total:'num', ovShimo:'num', ovKami:'num', hanaShimo:'text', hanaKami:'text',
+  clearance:'num',
+  dHana:'bool', dThick:'bool', dMoya:'bool', dShort:'bool', dClear:'bool', dHatch:'bool',
+  d225:'bool', dMoyaW:'bool', dCenter:'bool',
+  dHafuW:'bool', dTaruki:'bool', dNoji:'bool', dOver:'bool', dSlope:'bool',
+  orient:'text', fscale:'num', lscale:'num', note:'text',
+  ordHafu:'text',
+  ordHafuSp:'text', ordHafuLen:'text', ordHafuQty:'text',
+  ordHanaSSp:'text', ordHanaSLen:'text', ordHanaSQty:'text',
+  ordHanaKSp:'text', ordHanaKLen:'text', ordHanaKQty:'text'
+};
+
+const DEFAULTS = {
+  name:'', pitch:1.0, material:'ガルバリウム', client:'',
+  tNoji:12, hTaruki:60, tHafu:30, wHafu:150, tHana:30, hHanaOrder:null,
+  moyaSize:105, notchRef:22.5,
+  total:500, ovShimo:82, ovKami:58, hanaShimo:'tatsu', hanaKami:'tatsu',
+  clearance:0,
+  dHana:true, dThick:true, dMoya:true, dShort:true, dClear:true, dHatch:true,
+  d225:true, dMoyaW:true, dCenter:true,
+  dHafuW:true, dTaruki:true, dNoji:true, dOver:true, dSlope:true,
+  orient:'landscape', fscale:1, lscale:1, note:'',
+  ordHafu:'p3',
+  ordHafuSp:'', ordHafuLen:'', ordHafuQty:'',
+  ordHanaSSp:'', ordHanaSLen:'', ordHanaSQty:'',
+  ordHanaKSp:'', ordHanaKLen:'', ordHanaKQty:''
+};
+
+function readForm(){
+  const p = {};
+  for(const k in FIELDS){
+    const el = document.getElementById(k);
+    if(!el) continue;
+    if(FIELDS[k]==='bool') p[k] = el.checked;
+    else if(FIELDS[k]==='num'){
+      const v = el.value.trim();
+      p[k] = (v==='') ? null : parseFloat(v);
+      if(p[k]!==null && !isFinite(p[k])) p[k]=null;
+    } else p[k] = el.value;
+  }
+  return p;
+}
+function writeForm(p){
+  for(const k in FIELDS){
+    const el = document.getElementById(k);
+    if(!el) continue;
+    const v = (k in p) ? p[k] : DEFAULTS[k];
+    if(FIELDS[k]==='bool') el.checked = !!v;
+    else el.value = (v===null||v===undefined) ? '' : v;
+  }
+}
+
+/* =========================================================
+   2. 幾何計算
+   ========================================================= */
+function geometry(p){
+  const num = (v,d)=> (v===null||v===undefined||!isFinite(v)) ? d : v;
+
+  const pitch  = Math.max(0.05, num(p.pitch, 1));
+  const tan    = pitch/10;
+  const th     = Math.atan(tan);
+  const cos    = Math.cos(th), sin = Math.sin(th);
+
+  const tNoji   = Math.max(0, num(p.tNoji,12));
+  const hTaruki = Math.max(1, num(p.hTaruki,60));
+  const tHafu   = Math.max(1, num(p.tHafu,27));
+  const wHafu   = Math.max(10, num(p.wHafu,145));
+  const tHana   = Math.max(1, num(p.tHana,27));
+
+  // 鼻隠し見付：タツ（鉛直に立てる）＝破風板幅/cosθ − 鼻隠し厚×tanθ
+  //             カネ（勾配に直角に立てる）＝破風板幅そのもの
+  const MODE = v => (v==='kane'||v==='none'||v==='cut1'||v==='cut2') ? v : 'tatsu';
+  const modeS = MODE(p.hanaShimo);   // 水下
+  const modeK = MODE(p.hanaKami);    // 水上
+  const hTatsu = wHafu/cos - tHana*tan;
+  const hCut = wHafu/cos + tHana*tan;                        // 勾配カット：長い方の成
+  const isCut = m => (m==='cut1'||m==='cut2');
+  const faceAuto = m => (m==='kane') ? wHafu : (isCut(m) ? hCut : hTatsu);
+  const hOrder = (p.hHanaOrder===null||p.hHanaOrder===undefined||!isFinite(p.hHanaOrder))
+                 ? null : p.hHanaOrder;                       // 手入力（空欄なら自動）
+  // 勾配カットは上端＝垂木天、下端＝破風板下端に必ず揃えるので、手入力の成では動かさない
+  const pick = m => (m==='none') ? 0 : ((hOrder!==null && !isCut(m)) ? hOrder : faceAuto(m));
+  const faceS = pick(modeS);
+  const faceK = pick(modeK);
+  const hS = faceS;
+  const hHana = hTatsu;
+
+  const moyaSize = Math.max(10, num(p.moyaSize,105));
+  const notchRef = num(p.notchRef,22.5);      // 母屋芯から水下側へ
+
+  const totalW = Math.max(tHana*3+50, num(p.total,500));   // 鼻隠し外面〜外面
+  const L      = totalW - tHana;                            // 左鼻隠し左面→右鼻隠し左面
+  const ovS    = Math.max(0, num(p.ovShimo,40));            // 野地板の出（水下＝左）
+  const ovK    = Math.max(0, num(p.ovKami,40));             // 野地板の出（水上＝右）
+
+  // 4本の勾配ライン（y は下向き正）
+  const lnC = x => -x*tan - tNoji/cos;      // 野地板天
+  const lnD = x => -x*tan;                  // 野地板下端＝垂木天＝破風板天
+  const lnB = x => -x*tan + hTaruki/cos;    // 垂木下端
+  const lnA = x => -x*tan + wHafu/cos;      // 破風板下端
+
+  // 鼻隠し板（水下＝左／水上＝右）。外面が垂木天と交わる x を基準に組み立てる。
+  //   タツ：厚みは水平、見付は鉛直。左上角が垂木天に乗る。
+  //   カネ：厚みは勾配方向、見付は勾配直角。上辺が垂木天、下辺が破風板下端に一致。
+  //   無し：板を描かない（切妻の水上どうしなど）。垂木木口＝図の端とみなす。
+  //   innerX＝内面（＝垂木の木口）が垂木天と交わる x。合板の出はここが基準。
+  function makeBoard(mode, xOuter, into, face){  // into=+1:内側が水上向き(左端) / -1:(右端)
+    if(mode==='none')
+      return {mode, poly:null, innerX:xOuter, aX:xOuter, bX:xOuter, face:0};
+    if(mode==='cut1' || mode==='cut2'){
+      const xi=xOuter+into*tHana, x0=Math.min(xOuter,xi), x1=Math.max(xOuter,xi);
+      const dif = tHana*tan;                     // 厚み分の勾配落ち＝C
+      const shortF = face - dif;                 // 短い方の成＝D
+      let poly, yb;
+      if(mode==='cut1'){                         // 上部のみ：上端は勾配なり、下端は水平
+        yb = lnD(x1) + face;
+        poly = [[x0,lnD(x0)],[x1,lnD(x1)],[x1,yb],[x0,yb]];
+      }else{                                     // 上下：上端・下端とも勾配なり（平行四辺形）
+        poly = [[x0,lnD(x0)],[x1,lnD(x1)],[x1,lnD(x1)+shortF],[x0,lnD(x0)+shortF]];
+        yb = lnD(x0)+shortF;                     // いちばん下（x0側の下端）
+      }
+      return {mode, cut:true, cutBoth:(mode==='cut2'),
+              poly, diag:[poly[0],poly[2]],
+              short:[[xOuter,lnD(x1)],[xOuter,lnD(x1)+shortF]],   // 短い方の成＝D
+              full :[[xOuter,lnD(x1)],[xOuter,yb]],               // 長い方＝B（発注寸法）
+              gap  :[[xOuter,lnD(x0)],[xOuter,lnD(x1)]],          // 差＝C
+              outer:[[xOuter,lnD(x1)],[xOuter,yb]],
+              thick:[[x0,yb],[x1,yb]],          // 厚みは水平に測る（勾配はつかない）
+              outDir:[0,1], innerX:xi,
+              face, faceShort:shortF,
+              aX:x0, bX:(into>0?x1:x0)};
+    }
+    if(mode==='tatsu'){
+      const xi=xOuter+into*tHana, x0=Math.min(xOuter,xi), x1=Math.max(xOuter,xi), y0=lnD(x0);
+      return {mode, poly:[[x0,y0],[x1,y0],[x1,y0+face],[x0,y0+face]],
+              diag:[[x0,y0],[x1,y0+face]],
+              outer:[[xOuter,lnD(x0)],[xOuter,y0+face]],        // 成を測る外面（鉛直）
+              thick:[[x0,y0+face],[x1,y0+face]],                // 鼻隠し厚（水平）
+              outDir:[0,1], innerX:xi,
+              face, aX:x1, bX:(into>0?x1:x0)};
+    }
+    const O=[xOuter,lnD(xOuter)];                                 // 外面×垂木天
+    const I=[xOuter+into*tHana*cos, lnD(xOuter)-into*tHana*sin];  // 内面×垂木天
+    const dn=[face*sin, face*cos];                                // 成の方向（直角下向き）
+    const Ob=[O[0]+dn[0],O[1]+dn[1]], Ib=[I[0]+dn[0],I[1]+dn[1]];
+    const ul = (into>0)?O:I, lr = (into>0)?Ib:Ob;                 // 左上→右下の対角
+    return {mode, poly:[O,I,Ib,Ob], diag:[ul,lr],
+            outer:[O,Ob], thick:[Ob,Ib], outDir:[sin,cos], innerX:I[0], face,
+            aX:xOuter+wHafu*sin, bX:I[0]+hTaruki*sin};
+  }
+  const bS = makeBoard(modeS, 0,      +1, faceS);
+  const bK = makeBoard(modeK, totalW, -1, faceK);
+  const hK = faceK;
+
+  // 合板（野地板）の端部は常にカネ＝合板に対して直角。
+  // 出は「垂木の木口（＝鼻隠し内面）から合板先端まで」を合板下端ラインに沿って測る。
+  // 天端の端点は直角方向へ板厚ぶん寄るため、x が tNoji*sin だけ水下側にずれる。
+  const xEndL = bS.innerX - ovS*cos;
+  const xEndR = bK.innerX + ovK*cos;
+  const endLD = [xEndL, lnD(xEndL)];
+  const endLC = [xEndL - tNoji*sin, lnC(xEndL - tNoji*sin)];
+  const endRD = [xEndR, lnD(xEndR)];
+  const endRC = [xEndR - tNoji*sin, lnC(xEndR - tNoji*sin)];
+
+  // ケラバカット位置＝破風板下端と平行、そこからクリアランスぶん上（直角方向）
+  const clearance = Math.max(0, num(p.clearance,0));
+  const lnCut = x => lnA(x) - clearance/cos;
+
+  // 母屋（1本・図の中央）
+  const xc      = totalW/2;
+  const xL      = xc - moyaSize/2;
+  const xNotch  = xc - notchRef;            // 垂木欠き位置
+  const moya    = { xL, xR:xL+moyaSize, xc, xNotch, yT: lnB(xNotch) };
+
+  // ケラバカット寸法＝桁天からケラバカット位置まで（母屋の水下側の面＝長い方で測る）
+  //   ＝(破風板幅 − 垂木成 − クリアランス)/cosθ + (母屋/2 − 芯からの欠き寸法)×tanθ
+  const dimMoya = (wHafu-hTaruki-clearance)/cos + (moyaSize/2 - notchRef)*tan;
+
+  // 短い方（母屋の水上側の面）
+  const dimMoyaShort = dimMoya - moyaSize*tan;
+
+  const ord = v => (hOrder!==null) ? hOrder : Math.round(v);
+  return {pitch,tan,th,cos,sin,tNoji,hTaruki,tHafu,wHafu,tHana,hHana,hTatsu,
+          moyaSize,notchRef,moya,totalW,L,ovS,ovK,xEndL,xEndR,endLD,endLC,endRD,endRC,
+          modeS,modeK,bS,bK,hS,hK,clearance,
+          lnA,lnB,lnC,lnD,lnCut,dimMoya,dimMoyaShort,
+          faceAutoS:faceAuto(modeS), faceAutoK:faceAuto(modeK),
+          hHanaOrder:ord(hS), hHanaOrderS:ord(hS), hHanaOrderK:ord(hK)};
+}
+
+function fmt(v){
+  const r = Math.round(v*10)/10;
+  return (Math.abs(r-Math.round(r))<1e-9) ? String(Math.round(r)) : r.toFixed(1);
+}
+const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+/* 多角形を「ライン(x)より下」で切り取る（ケラバカットの落とし部） */
+function clipBelow(poly, lineFn){
+  const f = pt => pt[1] - lineFn(pt[0]);
+  const inter = (a,b)=>{
+    const fa=f(a), fb=f(b), t = fa/(fa-fb);
+    return [a[0]+t*(b[0]-a[0]), a[1]+t*(b[1]-a[1])];
+  };
+  const out=[];
+  for(let i=0;i<poly.length;i++){
+    const cur=poly[i], prev=poly[(i+poly.length-1)%poly.length];
+    const ci=f(cur)>=0, pi=f(prev)>=0;
+    if(ci){ if(!pi) out.push(inter(prev,cur)); out.push(cur); }
+    else if(pi){ out.push(inter(prev,cur)); }
+  }
+  return out;
+}
+
+/* =========================================================
+   3. 作図（論理座標＝A4横 297×210 mm）
+   ========================================================= */
+const SW = 297, SH = 210;
+
+function buildContent(p, g){
+  const o  = [];
+  const LS = Math.max(.4, p.lscale||1);
+  const FS = Math.max(.5, p.fscale||1);
+  const ROT = (p.orient==='portrait') ? 90 : 0;   // 用紙の回転量（文字の向き判定に使用）
+
+  const W_OUT = (0.34*LS).toFixed(2);   // 外形線
+  const W_THN = (0.18*LS).toFixed(2);   // 細線
+  const W_DIM = (0.16*LS).toFixed(2);   // 寸法線
+  // 現場で読める大きさを優先（参考図面とほぼ同等）
+  const F_DIM = 7.0*FS, F_TTL = 11.0*FS, F_MAT = 7.0*FS, F_NOTE = 11.5*FS, F_SML = 6.0*FS;
+
+  /* ---- 表題・注記の帯を文字サイズから決め、残りを作図領域にする ---- */
+  const yTitle = 9 + F_TTL;
+  const yMat   = yTitle + F_MAT*1.4;
+  const headB  = (p.material ? yMat : yTitle) + 6;
+  const noteLines = [`破風板：${fmt(g.tHafu)}ｘ${fmt(g.wHafu)}`];
+  const okS = g.modeS!=='none', okK = g.modeK!=='none';
+  if(okS && okK && g.hHanaOrderS===g.hHanaOrderK)
+    noteLines.push(`鼻隠し：${fmt(g.tHana)}ｘ${fmt(g.hHanaOrderS)}`);
+  else {
+    if(okS) noteLines.push(`${okK?'水下':''}鼻隠し：${fmt(g.tHana)}ｘ${fmt(g.hHanaOrderS)}`);
+    if(okK) noteLines.push(`${okS?'水上':''}鼻隠し：${fmt(g.tHana)}ｘ${fmt(g.hHanaOrderK)}`);
+  }
+  const noteStep = F_NOTE*1.35;
+  const yNote2 = SH - 9;
+  const footT  = yNote2 - (noteLines.length-1)*noteStep - F_NOTE - 5;
+
+  const OFF  = F_DIM*1.35;         // 寸法線の逃げ量（文字サイズに追従）
+  const SIDE  = OFF*1.5;           // 左右の成寸法に必要な余白
+  const EXTRA = F_DIM*1.7;         // 勾配カットで寸法を二重に引くぶん
+
+  /* ---- 描画領域とスケール ---- */
+  const cutM = (g.bS.cut||g.bK.cut) ? EXTRA : 0;
+  const area = {x0:11+SIDE+cutM, y0:headB, x1:SW-11-SIDE-cutM, y1:footT};
+
+  const xs = [g.endLC[0], g.endLD[0], g.endRC[0], g.endRD[0], g.moya.xL, g.moya.xR];
+  const ys = [g.endLC[1], g.endLD[1], g.endRC[1], g.endRD[1],
+              g.moya.yT, g.moya.yT+g.moyaSize];
+  [g.bS,g.bK].forEach(b=>{ if(b.poly) b.poly.forEach(q=>{ xs.push(q[0]); ys.push(q[1]); }); });
+  [g.bS.aX,g.bK.aX].forEach(x=>{ xs.push(x); ys.push(g.lnA(x)); });
+
+  const minX=Math.min(...xs), maxX=Math.max(...xs);
+  const minY=Math.min(...ys), maxY=Math.max(...ys);
+  const bw=Math.max(1,maxX-minX), bh=Math.max(1,maxY-minY);
+
+  const k  = Math.min((area.x1-area.x0)/bw, (area.y1-area.y0)/bh);
+  const ox = area.x0 + ((area.x1-area.x0)-bw*k)/2 - minX*k;
+  const oy = area.y0 + ((area.y1-area.y0)-bh*k)/2 - minY*k;
+  const PX = x => ox + k*x;
+  const PY = y => oy + k*y;
+
+  /* ---- 低レベル描画 ---- */
+  const N = v => (Math.round(v*1000)/1000);
+  function line(x1,y1,x2,y2,w,dash){
+    o.push(`<line x1="${N(x1)}" y1="${N(y1)}" x2="${N(x2)}" y2="${N(y2)}" stroke="#000" stroke-width="${w||W_THN}"`
+      + (dash?` stroke-dasharray="${dash}"`:``) + ` stroke-linecap="round"/>`);
+  }
+  function poly(pts,w,fill){
+    o.push(`<polygon points="${pts.map(q=>N(q[0])+','+N(q[1])).join(' ')}" fill="${fill||'none'}" stroke="${w?'#000':'none'}" stroke-width="${w||0}"/>`);
+  }
+  function text(x,y,s,size,anchor,rot,weight){
+    if(s===''||s===null||s===undefined) return;
+    const tr = rot ? ` transform="translate(${N(x)},${N(y)}) rotate(${N(rot)})"` : '';
+    const xy = rot ? `x="0" y="0"` : `x="${N(x)}" y="${N(y)}"`;
+    o.push(`<text ${xy}${tr} font-size="${N(size)}" text-anchor="${anchor||'start'}" `
+      + `font-family="'Yu Gothic UI','Meiryo','MS PGothic',sans-serif" `
+      + `font-weight="${weight||400}" fill="#000">${esc(s)}</text>`);
+  }
+
+  /* ---- 寸法線（汎用・任意方向） ---- */
+  function dim(ax,ay,bx,by,off,label){
+    const dx=bx-ax, dy=by-ay, len=Math.hypot(dx,dy);
+    if(len<1e-6) return;
+    const ux=dx/len, uy=dy/len;
+    const nx=-uy, ny=ux;                       // 法線
+    const a2=[ax+nx*off, ay+ny*off], b2=[bx+nx*off, by+ny*off];
+
+    if(Math.abs(off)>0.01){                    // 補助線
+      const s = off>0?1:-1, ext=1.8;
+      line(ax+nx*s*1.0, ay+ny*s*1.0, a2[0]+nx*s*ext, a2[1]+ny*s*ext, W_DIM);
+      line(bx+nx*s*1.0, by+ny*s*1.0, b2[0]+nx*s*ext, b2[1]+ny*s*ext, W_DIM);
+    }
+    line(a2[0],a2[1],b2[0],b2[1],W_DIM);       // 寸法線
+
+    const AL=3.2*LS, AW=0.85*LS;
+    const arrow=(px,py,sx,sy)=>{
+      const tx=px+sx*AL, ty=py+sy*AL;
+      poly([[px,py],[tx-sy*AW,ty+sx*AW],[tx+sy*AW,ty-sx*AW]],0,'#000');
+    };
+    const outside = len < AL*2.6;
+    if(outside){                               // 短いときは矢印を外へ逃がす
+      arrow(a2[0],a2[1],-ux,-uy);
+      arrow(b2[0],b2[1], ux, uy);
+      line(a2[0]-ux*(AL+1.5),a2[1]-uy*(AL+1.5),a2[0],a2[1],W_DIM);
+      line(b2[0]+ux*(AL+1.5),b2[1]+uy*(AL+1.5),b2[0],b2[1],W_DIM);
+    }else{
+      arrow(a2[0],a2[1], ux, uy);
+      arrow(b2[0],b2[1],-ux,-uy);
+    }
+
+    // 文字（用紙上で上下逆さにならないよう、用紙の回転量ROTを加味して正規化）
+    let ang = Math.atan2(uy,ux)*180/Math.PI;
+    let fx=ux, fy=uy;
+    if(ang+ROT>90.0001 || ang+ROT<=-90){ ang+=180; fx=-ux; fy=-uy; }
+    const mx=(a2[0]+b2[0])/2, my=(a2[1]+b2[1])/2;
+    text(mx+fy*1.3, my-fx*1.3, label, F_DIM, 'middle', ang);
+  }
+
+  /* ---- 屋根ライン ---- */
+  const P2 = q => [PX(q[0]),PY(q[1])];
+  const seg = (a,b,w)=>{ const A=P2(a),B=P2(b); line(A[0],A[1],B[0],B[1],w); };
+  seg(g.endLC,g.endRC,W_OUT);                                                  // 野地板天
+  seg(g.endLD,g.endRD,W_OUT);                                                  // 野地板下端＝垂木天
+  seg(g.endLD,g.endLC,W_OUT);                                                  // 水下小口（カネ＝野地板に直角）
+  seg(g.endRD,g.endRC,W_OUT);                                                  // 水上小口（カネ＝野地板に直角）
+  line(PX(g.bS.bX),PY(g.lnB(g.bS.bX)),PX(g.bK.bX),PY(g.lnB(g.bK.bX)),W_OUT);   // 垂木下端
+  line(PX(g.bS.aX),PY(g.lnA(g.bS.aX)),PX(g.bK.aX),PY(g.lnA(g.bK.aX)),W_OUT);   // 破風板下端
+
+  /* ---- 鼻隠し板（タツ／カネ） ---- */
+  function drawBoard(b){
+    poly(b.poly.map(P2), W_OUT);
+    seg(b.diag[0], b.diag[1], W_THN);      // 対角（見切り）
+  }
+  if(g.bS.poly) drawBoard(g.bS);
+  if(g.bK.poly) drawBoard(g.bK);
+
+  /* ---- 母屋（断面） ---- */
+  const M = g.moya;
+  poly([[PX(M.xL),PY(M.yT)],[PX(M.xR),PY(M.yT)],
+        [PX(M.xR),PY(M.yT+g.moyaSize)],[PX(M.xL),PY(M.yT+g.moyaSize)]],W_OUT);
+  if(p.dHatch){   // ケラバカットで落とす部分（カット位置より下）
+    const cut = clipBelow([[M.xL,M.yT],[M.xR,M.yT],[M.xR,M.yT+g.moyaSize],[M.xL,M.yT+g.moyaSize]], g.lnCut);
+    if(cut.length>2) poly(cut.map(q=>[PX(q[0]),PY(q[1])]), W_OUT, 'url(#hatch)');
+  }
+  line(PX(M.xNotch),PY(M.yT),PX(M.xNotch),PY(M.yT+g.moyaSize),W_OUT);   // 垂木欠きライン
+  if(p.dCenter) line(PX(M.xc),PY(M.yT)-2,PX(M.xc),PY(M.yT+g.moyaSize)+2,W_DIM,'6 1.6 1.2 1.6');
+
+  /* ---- 寸法 ---- */
+  // 鼻隠し見付（左右）※法線は下向き方向に対して左が正
+  const dim2=(a,b,off,label)=>{const A=P2(a),B=P2(b); dim(A[0],A[1],B[0],B[1],off,label);};
+  if(p.dHana) [[g.bS,1],[g.bK,-1]].forEach(([b,sg])=>{
+    if(!b.poly) return;
+    if(b.cut){                                   // 短い成・長い成・その差
+      dim2(b.short[0], b.short[1], sg*SIDE,       fmt(b.faceShort));
+      dim2(b.full [0], b.full [1], sg*(SIDE+EXTRA), fmt(b.face));
+      dim2(b.gap  [0], b.gap  [1], sg*SIDE*0.42,  fmt(g.tHana*g.tan));
+    } else {
+      dim2(b.outer[0], b.outer[1], sg*SIDE, fmt(b.face));
+    }
+  });
+  // 鼻隠し厚
+  if(p.dThick){
+    if(g.bS.poly) dim2(g.bS.thick[0], g.bS.thick[1], OFF, fmt(g.tHana));
+    if(g.bK.poly) dim2(g.bK.thick[0], g.bK.thick[1], OFF, fmt(g.tHana));
+  }
+  // 母屋まわり
+  if(p.dMoya)  dim(PX(M.xL),PY(M.yT), PX(M.xL),PY(g.lnCut(M.xL)), OFF, fmt(g.dimMoya));
+  if(p.dShort) dim(PX(M.xR),PY(M.yT), PX(M.xR),PY(g.lnCut(M.xR)), -OFF, fmt(g.dimMoyaShort));
+  if(p.d225 && Math.abs(g.notchRef)>0.05)
+    dim(PX(M.xNotch),PY(M.yT), PX(M.xc),PY(M.yT), -OFF, fmt(g.notchRef));
+  if(p.dMoyaW)
+    dim(PX(M.xL),PY(M.yT+g.moyaSize), PX(M.xR),PY(M.yT+g.moyaSize), OFF, fmt(g.moyaSize));
+
+  // 145 / 60 / 12（勾配直角方向）※母屋右面〜右鼻隠しの空きに振り分ける
+  const perp=(x,d)=>[x+d*g.sin, g.lnD(x)+d*g.cos];
+  const free = Math.max(40, g.L - M.xR);
+  if(p.dHafuW){                       // 破風板寸法
+    const xa = M.xR + free*0.42;
+    const a1=[xa,g.lnD(xa)], a2=perp(xa,g.wHafu);
+    dim(PX(a1[0]),PY(a1[1]), PX(a2[0]),PY(a2[1]), 0, fmt(g.wHafu));
+  }
+  const xb = M.xR + free*0.78;
+  const q0=perp(xb,-g.tNoji), q1=[xb,g.lnD(xb)], q2=perp(xb,g.hTaruki);
+  if(p.dTaruki)                       // 垂木成
+    dim(PX(q1[0]),PY(q1[1]), PX(q2[0]),PY(q2[1]), 0, fmt(g.hTaruki));
+  if(p.dNoji)                         // 合板厚
+    dim(PX(q0[0]),PY(q0[1]), PX(q1[0]),PY(q1[1]), 0, fmt(g.tNoji));
+
+  // ケラバカットのクリアランス（破風板下端 → カット位置、直角方向）
+  if(p.dClear && g.clearance>0){
+    const xcl = M.xR + free*0.13;
+    const c1=perp(xcl, g.wHafu - g.clearance), c2=perp(xcl, g.wHafu);
+    dim(PX(c1[0]),PY(c1[1]), PX(c2[0]),PY(c2[1]), 0, fmt(g.clearance));
+  }
+
+  // 野地板の出（野地板下端が基準／野地板の上へ逃がす）
+  const ovOff = -(g.tNoji*k + F_DIM*1.5);
+  if(p.dOver && g.ovS>0)
+    dim(PX(g.endLD[0]),PY(g.endLD[1]),
+        PX(g.bS.innerX),PY(g.lnD(g.bS.innerX)), ovOff, fmt(g.ovS));
+  if(p.dOver && g.ovK>0)
+    dim(PX(g.bK.innerX),PY(g.lnD(g.bK.innerX)),
+        PX(g.endRD[0]),PY(g.endRD[1]), ovOff, fmt(g.ovK));
+
+
+  /* ---- 勾配マーク ---- */
+  if(p.dSlope){
+    const mk = Math.min(k, 20/Math.max(1e-6, 100*g.tan));
+    const run = 100*mk, rise = 100*g.tan*mk;
+    const mx = PX(0) + 12;
+    const clear = F_DIM*1.9 + (p.dOver ? F_DIM*1.6 : 0);
+    const myBase = Math.max(headB+F_DIM, PY(g.lnC((mx-ox+run)/k)) - clear - rise);
+    line(mx, myBase, mx+run, myBase, W_OUT);                 // 基準（100）
+    line(mx, myBase, mx, myBase+rise, W_OUT);                // 立上り
+    line(mx, myBase+rise, mx+run, myBase, W_OUT);            // 斜辺
+    text(mx+run/2, myBase-F_DIM*0.42, '100', F_DIM, 'middle');
+    text(mx-F_DIM*0.42, myBase+rise/2+F_DIM*0.36, fmt(g.pitch*10), F_DIM, 'end');
+  }
+
+  /* ---- 注記 ---- */
+
+  /* ---- 表題・注記ブロック ---- */
+  text(SW/2, yTitle, `${p.name||''}　屋根勾配：${(Number(g.pitch)).toFixed(1)}寸`, F_TTL, 'middle', 0, 700);
+  if(p.material) text(SW/2, yMat, `（${p.material}）`, F_MAT, 'middle');
+
+  noteLines.forEach((t,i)=>
+    text(SW/2, yNote2-(noteLines.length-1-i)*noteStep, t, F_NOTE, 'middle', 0, 700));
+
+  const notes = String(p.note||'').split(/\r?\n/).filter(s=>s.trim()!=='').slice(0,3);
+  notes.forEach((s,i)=> text(11, yNote2 - (notes.length-1-i)*(F_SML*1.35), s, F_SML, 'start'));
+
+  if(p.client) text(SW-11, yNote2, p.client, F_SML, 'end');
+
+  return o.join('\n');
+}
+
+/* =========================================================
+   3b. 破風鼻隠し発注書（A4縦）
+   ========================================================= */
+function orderRows(p, g){
+  // 発注書は整数のみ。C と D を丸めてから B = D + C とし、必ず合計が一致するようにする。
+  const rows = {p1:[], p2:[], p3:[]};
+  const RI = v => Math.round(v);
+  const putCut = (sec, sp, thick, seiShort, len, qty)=>{
+    const A = RI(thick), C = RI(thick*g.tan), D = RI(seiShort);
+    rows[sec].push({sp, A, B:D+C, C, D, len, qty});
+  };
+  const putFlat = (sp, thick, sei, len, qty)=>
+    rows.p3.push({sp, A:RI(thick), B:RI(sei), C:'', D:'', len, qty});
+
+  if(p.ordHafu!=='off'){
+    const sec = p.ordHafu || 'p3';
+    if(sec==='p3') putFlat(p.ordHafuSp, g.tHafu, g.wHafu, p.ordHafuLen, p.ordHafuQty);
+    else           putCut(sec, p.ordHafuSp, g.tHafu, g.wHafu, p.ordHafuLen, p.ordHafuQty);
+  }
+  [[g.bS, p.ordHanaSSp, p.ordHanaSLen, p.ordHanaSQty],
+   [g.bK, p.ordHanaKSp, p.ordHanaKLen, p.ordHanaKQty]].forEach(([b,sp,len,qty])=>{
+    if(b.mode==='none') return;
+    if(b.cut) putCut(b.cutBoth?'p1':'p2', sp, g.tHana, b.faceShort, len, qty);
+    else      putFlat(sp, g.tHana, b.face, len, qty);
+  });
+  return rows;
+}
+
+function renderOrderSVG(p){
+  const g = geometry(p);
+  const o = [];
+  const N  = v => Math.round(v*1000)/1000;
+  const FF = "font-family=\"'Yu Gothic UI','Meiryo','MS PGothic',sans-serif\"";
+  const T = (x,y,t,sz,an,w)=>{ if(t===''||t===null||t===undefined) return;
+    o.push(`<text x="${N(x)}" y="${N(y)}" font-size="${N(sz)}" text-anchor="${an||'start'}" ${FF} font-weight="${w||400}" fill="#000">${esc(t)}</text>`); };
+  const L = (x1,y1,x2,y2,w,dash)=>o.push(`<line x1="${N(x1)}" y1="${N(y1)}" x2="${N(x2)}" y2="${N(y2)}" stroke="#000" stroke-width="${w||0.25}"${dash?` stroke-dasharray="${dash}"`:''}/>`);
+  const PG= (pts,w)=>o.push(`<polygon points="${pts.map(q=>N(q[0])+','+N(q[1])).join(' ')}" fill="none" stroke="#000" stroke-width="${w||0.5}"/>`);
+  const AR= (x1,y1,x2,y2)=>{                       // 両矢印
+    L(x1,y1,x2,y2,0.25);
+    const dx=x2-x1, dy=y2-y1, l=Math.hypot(dx,dy); if(l<0.01) return;
+    const ux=dx/l, uy=dy/l, a=2.4, b=0.75;
+    [[x1,y1,ux,uy],[x2,y2,-ux,-uy]].forEach(([px,py,sx,sy])=>
+      o.push(`<polygon points="${N(px)},${N(py)} ${N(px+sx*a-sy*b)},${N(py+sy*a+sx*b)} ${N(px+sx*a+sy*b)},${N(py+sy*a-sx*b)}" fill="#000"/>`));
+  };
+
+  /* ---------- 説明図 ---------- */
+  const BW=16, BH=40, BD=7;                        // 板厚・成・勾配落ち（作図上の見た目）
+  function diagram(kind, dx, dy){
+    const x2=dx+BW, yb=dy+BD+BH;
+    const dot=(y)=>L(dx-15, y, x2+18, y, 0.18, '1.6 1.2');
+    if(kind==='p1'){                               // 上下勾配：平行四辺形
+      PG([[dx,dy],[x2,dy+BD],[x2,yb],[dx,dy+BH]]);
+      [dy, dy+BD, dy+BH, yb].forEach(dot);
+      AR(dx-10, dy,    dx-10, yb);      T(dx-13,  dy+(BD+BH)/2+1.8, 'B', 5.0, 'end');
+      AR(x2+13, dy+BD, x2+13, yb);      T(x2+16,  dy+(BD+BH)/2+1.8, 'D', 5.0);
+      AR(x2+5,  dy,    x2+5,  dy+BD);   T(x2+7.5, dy+BD/2+1.8,      'C', 4.6);
+      AR(dx-4,  dy+BH, dx-4,  yb);      T(dx-6.5, dy+BH+BD/2+1.8,   'C', 4.6, 'end');
+    } else if(kind==='p2'){                        // 一方のみ：台形
+      PG([[dx,dy],[x2,dy+BD],[x2,yb],[dx,yb]]);
+      [dy, dy+BD, yb].forEach(dot);
+      AR(dx-10, dy,    dx-10, yb);      T(dx-13,  dy+(BD+BH)/2+1.8, 'B', 5.0, 'end');
+      AR(x2+13, dy+BD, x2+13, yb);      T(x2+16,  dy+(BD+BH)/2+1.8, 'D', 5.0);
+      AR(x2+5,  dy,    x2+5,  dy+BD);   T(x2+7.5, dy+BD/2+1.8,      'C', 4.6);
+    } else {                                       // 仕上げ・粗寸法：矩形
+      PG([[dx,dy],[x2,dy],[x2,yb],[dx,yb]]);
+      [dy, yb].forEach(dot);
+      AR(dx-10, dy, dx-10, yb);         T(dx-13,  dy+(BD+BH)/2+1.8, 'B', 5.0, 'end');
+    }
+    AR(dx, yb+9, x2, yb+9);             T(dx+BW/2, yb+15, 'A', 5.0, 'middle');
+  }
+
+  /* ---------- 表 ---------- */
+  function table(cols, heads, list, hb){
+    const RH=11, nrow=4;
+    heads.forEach((h,i)=> T((cols[i]+cols[i+1])/2, hb, h, 4.2, 'middle', 700));
+    L(cols[0], hb+2.6, cols[cols.length-1], hb+2.6, 0.5);
+    for(let r=0;r<nrow;r++){
+      const it=list[r], base=hb+2.6+RH*(r+1);
+      if(it){
+        const v = (cols.length===8)
+          ? [it.sp, it.A+'×', it.B, it.C, it.D, it.len, it.qty]
+          : [it.sp, it.A+'×', it.B, it.len, it.qty];
+        v.forEach((t,i)=> T((cols[i]+cols[i+1])/2, base-3.6, (t===''||t===undefined)?'':String(t), 4.8, 'middle'));
+      }
+      L(cols[0], base, cols[cols.length-1], base, 0.2);
+    }
+  }
+
+  const C7 = [84,104,122,140,156,174,186,198];     // 樹種 A B C D 材長 枚数
+  const C5 = [84,110,134,158,178,198];             // 樹種 A B 材長 枚数
+  const rows = orderRows(p, g);
+  const SEC = [
+    {k:'p1', t:'①　上下勾配加工',                        y: 20},
+    {k:'p2', t:'②　一方のみ勾配加工',                    y:112},
+    {k:'p3', t:'③　仕上げ寸法（ﾌﾟﾚｰﾅｰ加工有）・粗寸法',  y:204}
+  ];
+  SEC.forEach(sc=>{
+    L(12, sc.y-7, 198, sc.y-7, 0.7);
+    T(14, sc.y, sc.t, 5.4, 'start', 700);
+    diagram(sc.k, 40, sc.y+13);
+    if(sc.k==='p3') table(C5, ['樹種','A','B','材長','枚数'], rows.p3, sc.y+17);
+    else            table(C7, ['樹種','A','B','C','D','材長','枚数'], rows[sc.k], sc.y+17);
+  });
+  L(12, 285, 198, 285, 0.7);
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 297" width="210mm" height="297mm" `
+    + `shape-rendering="geometricPrecision"><rect width="210" height="297" fill="#fff"/>`
+    + o.join('\n') + `</svg>`;
+}
+
+function renderSVG(p){
+  const g = geometry(p);
+  const inner = buildContent(p, g);
+  const portrait = (p.orient==='portrait');
+  const pw = portrait?210:297, ph = portrait?297:210;
+  const wrap = portrait ? `<g transform="matrix(0,1,-1,0,210,0)">${inner}</g>` : inner;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${pw} ${ph}" `
+    + `width="${pw}mm" height="${ph}mm" shape-rendering="geometricPrecision">`
+    + `<defs><pattern id="hatch" width="2.6" height="2.6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">`
+    + `<line x1="0" y1="0" x2="0" y2="2.6" stroke="#000" stroke-width="0.16"/></pattern></defs>`
+    + `<rect width="${pw}" height="${ph}" fill="#fff"/>`
+    + wrap + `</svg>`;
+}
+
+/* =========================================================
+   4. UI
+   ========================================================= */
+const $ = id => document.getElementById(id);
+
+function getParams(){ return Object.assign({}, DEFAULTS, readForm()); }
+
+function refresh(){
+  const p = getParams();
+  const g = geometry(p);
+  $('sheet').innerHTML = renderSVG(p);
+  $('sheet').className = 'sheet ' + (p.orient==='portrait' ? 'port' : 'land');
+  $('sheetOrd').innerHTML = renderOrderSVG(p);
+  $('pgLabel').textContent = 'ケラバ図 A4横　＋　発注書 A4縦';
+  applyZoom();
+  try{ localStorage.setItem('keraba_last_v2', JSON.stringify(readForm())); }catch(e){}
+}
+
+function applyZoom(){
+  const stage=$('stage'), px = mm => mm*96/25.4, sel = $('zoom').value;
+  [['wrap','sheet'],['wrapOrd','sheetOrd']].forEach(([wid,sid])=>{
+    const wrap=$(wid), sheet=$(sid);
+    if(!wrap||!sheet) return;
+    const svg = sheet.querySelector('svg');
+    if(!svg) return;
+    const wmm = parseFloat(svg.getAttribute('width')), hmm = parseFloat(svg.getAttribute('height'));
+    let z = (sel==='fit')
+      ? Math.min((stage.clientWidth-60)/px(wmm), (stage.clientHeight-60)/px(hmm), 1.6)
+      : parseFloat(sel);
+    z = Math.max(.15, z);
+    sheet.style.transform = `scale(${z})`;
+    sheet.style.width  = px(wmm)+'px';
+    sheet.style.height = px(hmm)+'px';
+    wrap.style.width   = (px(wmm)*z)+'px';
+    wrap.style.height  = (px(hmm)*z)+'px';
+  });
+}
+
+/* ---- イベント ---- */
+$('form').addEventListener('input', refresh);
+$('form').addEventListener('change', refresh);
+$('zoom').addEventListener('change', applyZoom);
+window.addEventListener('resize', applyZoom);
+
+function doPrint(mode){                    // 'dwg' | 'ord' | 'both'
+  document.body.classList.remove('p-dwg','p-ord','p-both');
+  document.body.classList.add('p-'+mode);
+  window.print();
+}
+$('btnPrintDwg').onclick  = ()=> doPrint('dwg');
+$('btnPrintOrd').onclick  = ()=> doPrint('ord');
+$('btnPrintBoth').onclick = ()=> doPrint('both');
+
+$('btnCalcHana').onclick = ()=>{
+  const g = geometry(Object.assign({}, getParams(), {hHanaOrder:null}));
+  const v = (g.modeS!=='none') ? g.faceAutoS : (g.modeK!=='none' ? g.faceAutoK : null);
+  if(v===null){ alert('鼻隠しが両端とも「無し」です。'); return; }
+  $('hHanaOrder').value = Math.round(v);   // 発注サイズに合わせて整数に丸める
+  refresh();
+};
+
+$('btnReset').onclick = ()=>{
+  if(!confirm('入力を既定値に戻します。よろしいですか？')) return;
+  try{ localStorage.removeItem('keraba_last_v2'); }catch(e){}
+  writeForm(DEFAULTS);
+  refresh();
+};
+
+/* ---- 起動 ---- */
+(function init(){
+  let last=null, ok=true;
+  try{
+    last = JSON.parse(localStorage.getItem('keraba_last_v2')||'null');
+    localStorage.setItem('keraba_probe','1'); localStorage.removeItem('keraba_probe');
+  }catch(e){ ok=false; }
+  writeForm(Object.assign({}, DEFAULTS, last||{}));
+  refresh();
+  if(!ok){
+    const b=document.getElementById('updBar');
+    b.style.background='#ffe6e6'; b.style.borderColor='#e0a0a0'; b.style.color='#8a2020';
+    b.textContent='このブラウザでは入力内容を保存できません（サーバー経由で開いてください）';
+    b.style.display='block';
+  }
+})();
+
+/* =========================================================
+   5. PWA（オフライン動作と自動更新）
+   ========================================================= */
+const APP_VERSION = '1.0.3';
+document.getElementById('ver').textContent = 'v' + APP_VERSION;
+
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+    if(reloading) return; reloading = true; location.reload();
+  });
+  navigator.serviceWorker.register('./sw.js').then(reg=>{
+    reg.addEventListener('updatefound', ()=>{
+      const sw = reg.installing;
+      if(!sw) return;
+      sw.addEventListener('statechange', ()=>{
+        if(sw.state==='installed' && navigator.serviceWorker.controller){
+          const bar = document.getElementById('updBar');
+          bar.style.display = 'block';
+          bar.onclick = ()=> location.reload();
+        }
+      });
+    });
+    setInterval(()=> reg.update(), 10*60*1000);
+  }).catch(()=>{});
+}
+
+/* Service Worker が使えない環境（社内LANのhttpなど）でも自動更新する。
+   version.json を定期的に見に行き、番号が変わっていたら読み直す。
+   入力内容は都度保存しているので、読み直しても続きから使えます。 */
+let updating = false;
+function applyUpdate(v){
+  if(updating) return;
+  updating = true;
+  const bar = document.getElementById('updBar');
+  bar.textContent = '新しいバージョン（v' + v + '）に更新します…';
+  bar.style.display = 'block';
+  bar.onclick = ()=> location.replace(location.pathname + '?v=' + encodeURIComponent(v));
+  setTimeout(()=> location.replace(location.pathname + '?v=' + encodeURIComponent(v)), 4000);
+}
+async function checkUpdate(){
+  if(updating || !location.protocol.startsWith('http')) return;
+  try{
+    const r = await fetch('./version.json?_=' + Date.now(), {cache:'no-store'});
+    if(!r.ok) return;
+    const j = await r.json();
+    if(j && j.version && j.version !== APP_VERSION) applyUpdate(j.version);
+  }catch(e){}
+}
+checkUpdate();
+setInterval(checkUpdate, 3*60*1000);
+window.addEventListener('focus', checkUpdate);
+</script>
+</body>
+</html>

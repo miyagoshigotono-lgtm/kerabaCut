@@ -1,0 +1,7 @@
+# ── 顧客名の入った図面は絶対に公開しない ──
+*.pdf
+
+# 作業用
+*.bak
+Thumbs.db
+desktop.ini
