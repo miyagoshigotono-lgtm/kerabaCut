@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ケラバ図メーカー</title>
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#0f4f9e">
+<meta name="theme-color" content="#124680">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,7 +13,7 @@
 <style>
   :root{
     --bg:#eef1f5; --panel:#ffffff; --line:#d5dce5; --ink:#1c2430; --sub:#5b6878;
-    --accent:#1b6fd4; --accent2:#0f4f9e;
+    --accent:#1b6fd4; --accent2:#124680;
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;height:100%}
@@ -890,7 +890,7 @@ $('btnReset').onclick = ()=>{
 /* =========================================================
    5. PWA（オフライン動作と自動更新）
    ========================================================= */
-const APP_VERSION = '1.0.3';
+const APP_VERSION = '1.0.4';
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
