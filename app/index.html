@@ -316,7 +316,10 @@ function geometry(p){
   const hOrder = (p.hHanaOrder===null||p.hHanaOrder===undefined||!isFinite(p.hHanaOrder))
                  ? null : p.hHanaOrder;                       // 手入力（空欄なら自動）
   // 勾配カットは上端＝垂木天、下端＝破風板下端に必ず揃えるので、手入力の成では動かさない
-  const pick = m => (m==='none') ? 0 : ((hOrder!==null && !isCut(m)) ? hOrder : faceAuto(m));
+  //   タツ … 手入力の成をそのまま使う（無ければ自動値）
+  //   カネ … 垂木天〜破風板下端に直角で収まるので常に破風板成
+  //   勾配カット … 上下とも破風板に揃えるので常に破風板から決まる
+  const pick = m => (m==='none') ? 0 : ((hOrder!==null && m==='tatsu') ? hOrder : faceAuto(m));
   const faceS = pick(modeS);
   const faceK = pick(modeK);
   const hS = faceS;
@@ -416,13 +419,14 @@ function geometry(p){
   // 短い方（母屋の水上側の面）
   const dimMoyaShort = dimMoya - moyaSize*tan;
 
-  const ord = v => (hOrder!==null) ? hOrder : Math.round(v);
+  // 注記に出す発注寸法も pick と同じ規則で。カネ・勾配カットは手入力に引きずられない
+  const ord = (m, face) => (hOrder!==null && m==='tatsu') ? hOrder : Math.round(face);
   return {pitch,tan,th,cos,sin,tNoji,hTaruki,tHafu,wHafu,tHana,hHana,hTatsu,
           moyaSize,notchRef,moya,totalW,L,ovS,ovK,xEndL,xEndR,endLD,endLC,endRD,endRC,
           modeS,modeK,bS,bK,hS,hK,clearance,
           lnA,lnB,lnC,lnD,lnCut,dimMoya,dimMoyaShort,
           faceAutoS:faceAuto(modeS), faceAutoK:faceAuto(modeK),
-          hHanaOrder:ord(hS), hHanaOrderS:ord(hS), hHanaOrderK:ord(hK)};
+          hHanaOrderS:ord(modeS, faceS), hHanaOrderK:ord(modeK, faceK)};
 }
 
 function fmt(v){
@@ -858,10 +862,9 @@ $('btnPrintOrd').onclick  = ()=> doPrint('ord');
 $('btnPrintBoth').onclick = ()=> doPrint('both');
 
 $('btnCalcHana').onclick = ()=>{
+  // タツで破風板に合う成 ＝ 破風板成÷cosθ − 鼻隠し厚×tanθ
   const g = geometry(Object.assign({}, getParams(), {hHanaOrder:null}));
-  const v = (g.modeS!=='none') ? g.faceAutoS : (g.modeK!=='none' ? g.faceAutoK : null);
-  if(v===null){ alert('鼻隠しが両端とも「無し」です。'); return; }
-  $('hHanaOrder').value = Math.round(v);   // 発注サイズに合わせて整数に丸める
+  $('hHanaOrder').value = Math.round(g.hTatsu);   // 発注サイズに合わせて整数に丸める
   refresh();
 };
 
@@ -892,7 +895,7 @@ $('btnReset').onclick = ()=>{
 /* =========================================================
    5. PWA（オフライン動作と自動更新）
    ========================================================= */
-const APP_VERSION = '1.0.5';
+const APP_VERSION = '1.0.6';
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
