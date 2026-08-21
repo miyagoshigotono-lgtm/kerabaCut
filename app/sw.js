@@ -2,7 +2,7 @@
    方針：オンラインなら必ず最新を取りに行き（network-first）、
          つながらないときだけキャッシュを使う。
          → サーバー側のファイルを差し替えるだけで全員が更新される。 */
-const VERSION = 'keraba-v1.0.8';
+const VERSION = 'keraba-v1.0.9';
 const ASSETS = ['./', './index.html', './manifest.webmanifest',
                 './icon-192.png', './icon-512.png', './icon-512-maskable.png'];
 

@@ -122,6 +122,12 @@
         <div class="row"><label>邸名</label><input type="text" id="name" value="" placeholder="◯◯様邸"></div>
         <div class="row"><label>屋根勾配</label><input type="number" id="pitch" value="1.0" step="0.1" min="0.1" max="12"><span class="unit">寸</span></div>
         <div class="row"><label>屋根材・色</label><input type="text" id="material" value="ガルバリウム"></div>
+        <div class="row"><label>破風板</label>
+          <select id="hafu">
+            <option value="on" selected>有り</option>
+            <option value="none">無し</option>
+          </select>
+        </div>
         <div class="row"><label>鼻隠し板（水下）</label>
           <select id="hanaShimo">
             <option value="tatsu" selected>タツ</option>
@@ -239,7 +245,7 @@ const FIELDS = {
   name:'text', pitch:'num', material:'text', client:'text',
   tNoji:'num', hTaruki:'num', tHafu:'num', wHafu:'num', tHana:'num', hHanaOrder:'num',
   moyaSize:'num', notchRef:'num',
-  total:'num', ovShimo:'num', ovKami:'num', hanaShimo:'text', hanaKami:'text',
+  total:'num', ovShimo:'num', ovKami:'num', hafu:'text', hanaShimo:'text', hanaKami:'text',
   clearance:'num',
   dHana:'bool', dThick:'bool', dMoya:'bool', dShort:'bool', dClear:'bool', dHatch:'bool',
   d225:'bool', dMoyaW:'bool', dCenter:'bool',
@@ -255,7 +261,7 @@ const DEFAULTS = {
   name:'', pitch:1.0, material:'ガルバリウム', client:'',
   tNoji:12, hTaruki:60, tHafu:30, wHafu:150, tHana:30, hHanaOrder:null,
   moyaSize:105, notchRef:22.5,
-  total:500, ovShimo:82, ovKami:58, hanaShimo:'tatsu', hanaKami:'tatsu',
+  total:500, ovShimo:82, ovKami:58, hafu:'on', hanaShimo:'tatsu', hanaKami:'tatsu',
   clearance:0,
   dHana:true, dThick:true, dMoya:true, dShort:true, dClear:true, dHatch:true,
   d225:true, dMoyaW:true, dCenter:true,
@@ -310,6 +316,7 @@ function geometry(p){
 
   // 鼻隠し見付：タツ（鉛直に立てる）＝破風板幅/cosθ − 鼻隠し厚×tanθ
   //             カネ（勾配に直角に立てる）＝破風板幅そのもの
+  const hasHafu = (p.hafu !== 'none');     // 破風板を付けるか
   const MODE = v => (v==='kane'||v==='none'||v==='cut1'||v==='cut2') ? v : 'tatsu';
   const modeS = MODE(p.hanaShimo);   // 水下
   const modeK = MODE(p.hanaKami);    // 水上
@@ -426,7 +433,7 @@ function geometry(p){
 
   // 注記に出す発注寸法も pick と同じ規則で。カネ・勾配カットは手入力に引きずられない
   const ord = (m, face) => (hOrder!==null && m==='tatsu') ? hOrder : Math.round(face);
-  return {pitch,tan,th,cos,sin,tNoji,hTaruki,tHafu,wHafu,tHana,hHana,hTatsu,
+  return {pitch,tan,th,cos,sin,tNoji,hTaruki,tHafu,wHafu,tHana,hHana,hTatsu,hasHafu,
           moyaSize,notchRef,moya,totalW,L,ovS,ovK,xEndL,xEndR,endLD,endLC,endRD,endRC,
           modeS,modeK,bS,bK,hS,hK,clearance,
           lnA,lnB,lnC,lnD,lnCut,dimMoya,dimMoyaShort,
@@ -478,7 +485,8 @@ function buildContent(p, g){
   const yTitle = 9 + F_TTL;
   const yMat   = yTitle + F_MAT*1.4;
   const headB  = (p.material ? yMat : yTitle) + 6;
-  const noteLines = [`破風板：${fmt(g.tHafu)}ｘ${fmt(g.wHafu)}`];
+  const noteLines = [];
+  if(g.hasHafu) noteLines.push(`破風板：${fmt(g.tHafu)}ｘ${fmt(g.wHafu)}`);
   const okS = g.modeS!=='none', okK = g.modeK!=='none';
   if(okS && okK && g.hHanaOrderS===g.hHanaOrderK)
     noteLines.push(`鼻隠し：${fmt(g.tHana)}ｘ${fmt(g.hHanaOrderS)}`);
@@ -502,7 +510,7 @@ function buildContent(p, g){
   const ys = [g.endLC[1], g.endLD[1], g.endRC[1], g.endRD[1],
               g.moya.yT, g.moya.yT+g.moyaSize];
   [g.bS,g.bK].forEach(b=>{ if(b.poly) b.poly.forEach(q=>{ xs.push(q[0]); ys.push(q[1]); }); });
-  [g.bS.aX,g.bK.aX].forEach(x=>{ xs.push(x); ys.push(g.lnA(x)); });
+  if(g.hasHafu) [g.bS.aX,g.bK.aX].forEach(x=>{ xs.push(x); ys.push(g.lnA(x)); });
 
   const minX=Math.min(...xs), maxX=Math.max(...xs);
   const minY=Math.min(...ys), maxY=Math.max(...ys);
@@ -579,7 +587,8 @@ function buildContent(p, g){
   seg(g.endLD,g.endLC,W_OUT);                                                  // 水下小口（カネ＝野地板に直角）
   seg(g.endRD,g.endRC,W_OUT);                                                  // 水上小口（カネ＝野地板に直角）
   line(PX(g.bS.bX),PY(g.lnB(g.bS.bX)),PX(g.bK.bX),PY(g.lnB(g.bK.bX)),W_OUT);   // 垂木下端
-  line(PX(g.bS.aX),PY(g.lnA(g.bS.aX)),PX(g.bK.aX),PY(g.lnA(g.bK.aX)),W_OUT);   // 破風板下端
+  if(g.hasHafu)
+    line(PX(g.bS.aX),PY(g.lnA(g.bS.aX)),PX(g.bK.aX),PY(g.lnA(g.bK.aX)),W_OUT); // 破風板下端
 
   /* ---- 鼻隠し板（タツ／カネ） ---- */
   function drawBoard(b){
@@ -593,7 +602,7 @@ function buildContent(p, g){
   const M = g.moya;
   poly([[PX(M.xL),PY(M.yT)],[PX(M.xR),PY(M.yT)],
         [PX(M.xR),PY(M.yT+g.moyaSize)],[PX(M.xL),PY(M.yT+g.moyaSize)]],W_OUT);
-  if(p.dHatch){   // ケラバカットで落とす部分（カット位置より下）
+  if(p.dHatch && g.hasHafu){   // ケラバカットで落とす部分（カット位置より下）
     const cut = clipBelow([[M.xL,M.yT],[M.xR,M.yT],[M.xR,M.yT+g.moyaSize],[M.xL,M.yT+g.moyaSize]], g.lnCut);
     if(cut.length>2) poly(cut.map(q=>[PX(q[0]),PY(q[1])]), W_OUT, 'url(#hatch)');
   }
@@ -619,8 +628,8 @@ function buildContent(p, g){
     if(g.bK.poly) dim2(g.bK.thick[0], g.bK.thick[1], OFF, fmt(g.tHana));
   }
   // 母屋まわり
-  if(p.dMoya)  dim(PX(M.xL),PY(M.yT), PX(M.xL),PY(g.lnCut(M.xL)), OFF, fmt(g.dimMoya));
-  if(p.dShort) dim(PX(M.xR),PY(M.yT), PX(M.xR),PY(g.lnCut(M.xR)), -OFF, fmt(g.dimMoyaShort));
+  if(p.dMoya  && g.hasHafu) dim(PX(M.xL),PY(M.yT), PX(M.xL),PY(g.lnCut(M.xL)),  OFF, fmt(g.dimMoya));
+  if(p.dShort && g.hasHafu) dim(PX(M.xR),PY(M.yT), PX(M.xR),PY(g.lnCut(M.xR)), -OFF, fmt(g.dimMoyaShort));
   if(p.d225 && Math.abs(g.notchRef)>0.05)
     dim(PX(M.xNotch),PY(M.yT), PX(M.xc),PY(M.yT), -OFF, fmt(g.notchRef));
   if(p.dMoyaW)
@@ -629,7 +638,7 @@ function buildContent(p, g){
   // 145 / 60 / 12（勾配直角方向）※母屋右面〜右鼻隠しの空きに振り分ける
   const perp=(x,d)=>[x+d*g.sin, g.lnD(x)+d*g.cos];
   const free = Math.max(40, g.L - M.xR);
-  if(p.dHafuW){                       // 破風板寸法
+  if(p.dHafuW && g.hasHafu){          // 破風板寸法
     const xa = M.xR + free*0.42;
     const a1=[xa,g.lnD(xa)], a2=perp(xa,g.wHafu);
     dim(PX(a1[0]),PY(a1[1]), PX(a2[0]),PY(a2[1]), 0, fmt(g.wHafu));
@@ -642,7 +651,7 @@ function buildContent(p, g){
     dim(PX(q0[0]),PY(q0[1]), PX(q1[0]),PY(q1[1]), 0, fmt(g.tNoji));
 
   // ケラバカットのクリアランス（破風板下端 → カット位置、直角方向）
-  if(p.dClear && g.clearance>0){
+  if(p.dClear && g.hasHafu && g.clearance>0){
     const xcl = M.xR + free*0.13;
     const c1=perp(xcl, g.wHafu - g.clearance), c2=perp(xcl, g.wHafu);
     dim(PX(c1[0]),PY(c1[1]), PX(c2[0]),PY(c2[1]), 0, fmt(g.clearance));
@@ -706,7 +715,7 @@ function orderRows(p, g){
   const putFlat = (sp, thick, sei, len, qty)=>
     rows.p3.push({sp, A:RI(thick), B:RI(sei), C:'', D:'', len, qty});
 
-  if(p.ordHafu!=='off'){
+  if(g.hasHafu && p.ordHafu!=='off'){
     const sec = p.ordHafu || 'p3';
     if(sec==='p3') putFlat(p.ordHafuSp, g.tHafu, g.wHafu, p.ordHafuLen, p.ordHafuQty);
     else           putCut(sec, p.ordHafuSp, g.tHafu, g.wHafu, p.ordHafuLen, p.ordHafuQty);
@@ -836,6 +845,11 @@ function updateEnabled(p){
   off('tHana', noHana);
   off('hHanaOrder', noHana);
   $('btnCalcHana').disabled = noHana;
+
+  const noHafu = (p.hafu === 'none');
+  off('tHafu', noHafu);
+  off('wHafu', noHafu);
+  off('clearance', noHafu);          // 破風板が無ければケラバカットも無い
 }
 
 function refresh(){
@@ -955,7 +969,7 @@ $('btnReset').onclick = ()=>{
 /* =========================================================
    5. PWA（オフライン動作と自動更新）
    ========================================================= */
-const APP_VERSION = '1.0.8';
+const APP_VERSION = '1.0.9';
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
