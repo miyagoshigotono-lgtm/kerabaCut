@@ -583,7 +583,9 @@ function buildContent(p, g){
   const P2 = q => [PX(q[0]),PY(q[1])];
   const seg = (a,b,w)=>{ const A=P2(a),B=P2(b); line(A[0],A[1],B[0],B[1],w); };
   seg(g.endLC,g.endRC,W_OUT);                                                  // 野地板天
-  seg(g.endLD,g.endRD,W_OUT);                                                  // 野地板下端＝垂木天
+  // 垂木天は合板の出がマイナスでも鼻隠しまで通す（合板下端と同じライン）
+  const dL = Math.min(g.endLD[0], 0), dR = Math.max(g.endRD[0], g.totalW);
+  line(PX(dL),PY(g.lnD(dL)), PX(dR),PY(g.lnD(dR)), W_OUT);                    // 野地板下端＝垂木天
   seg(g.endLD,g.endLC,W_OUT);                                                  // 水下小口（カネ＝野地板に直角）
   seg(g.endRD,g.endRC,W_OUT);                                                  // 水上小口（カネ＝野地板に直角）
   line(PX(g.bS.bX),PY(g.lnB(g.bS.bX)),PX(g.bK.bX),PY(g.lnB(g.bK.bX)),W_OUT);   // 垂木下端
@@ -969,7 +971,7 @@ $('btnReset').onclick = ()=>{
 /* =========================================================
    5. PWA（オフライン動作と自動更新）
    ========================================================= */
-const APP_VERSION = '1.0.9';
+const APP_VERSION = '1.0.10';
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
