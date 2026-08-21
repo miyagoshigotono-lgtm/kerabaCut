@@ -330,8 +330,9 @@ function geometry(p){
 
   const totalW = Math.max(tHana*3+50, num(p.total,500));   // 鼻隠し外面〜外面
   const L      = totalW - tHana;                            // 左鼻隠し左面→右鼻隠し左面
-  const ovS    = Math.max(0, num(p.ovShimo,40));            // 野地板の出（水下＝左）
-  const ovK    = Math.max(0, num(p.ovKami,40));             // 野地板の出（水上＝右）
+  // 垂木の木口が基準。マイナスなら木口より内側で合板を止める
+  const ovS    = num(p.ovShimo,40);                         // 合板の出（水下＝左）
+  const ovK    = num(p.ovKami,40);                          // 合板の出（水上＝右）
 
   // 4本の勾配ライン（y は下向き正）
   const lnC = x => -x*tan - tNoji/cos;      // 野地板天
@@ -645,12 +646,15 @@ function buildContent(p, g){
 
   // 野地板の出（野地板下端が基準／野地板の上へ逃がす）
   const ovOff = -(g.tNoji*k + F_DIM*1.5);
-  if(p.dOver && g.ovS>0)
+  // マイナスのときは寸法線の向きが反転するので、逃がす側も合わせて反転させる
+  if(p.dOver && Math.abs(g.ovS) > 0.01)
     dim(PX(g.endLD[0]),PY(g.endLD[1]),
-        PX(g.bS.innerX),PY(g.lnD(g.bS.innerX)), ovOff, fmt(g.ovS));
-  if(p.dOver && g.ovK>0)
+        PX(g.bS.innerX),PY(g.lnD(g.bS.innerX)),
+        g.ovS >= 0 ? ovOff : -ovOff, fmt(Math.abs(g.ovS)));
+  if(p.dOver && Math.abs(g.ovK) > 0.01)
     dim(PX(g.bK.innerX),PY(g.lnD(g.bK.innerX)),
-        PX(g.endRD[0]),PY(g.endRD[1]), ovOff, fmt(g.ovK));
+        PX(g.endRD[0]),PY(g.endRD[1]),
+        g.ovK >= 0 ? ovOff : -ovOff, fmt(Math.abs(g.ovK)));
 
 
   /* ---- 勾配マーク ---- */
@@ -847,6 +851,23 @@ function applyZoom(){
 }
 
 /* ---- イベント ---- */
+// 入力欄をクリック（またはTabで移動）したら中身を全選択して、すぐ打ち直せるようにする
+(function(){
+  const target = t => t && t.tagName==='INPUT' && (t.type==='number' || t.type==='text');
+  $('form').addEventListener('focusin', e=>{
+    if(!target(e.target)) return;
+    e.target.select();
+    e.target._selectOnClick = true;
+  });
+  // フォーカス直後の mouseup はカーソル位置を決めて選択を解除してしまうので抑える
+  $('form').addEventListener('mouseup', e=>{
+    if(e.target && e.target._selectOnClick){ e.preventDefault(); e.target._selectOnClick = false; }
+  }, true);
+  $('form').addEventListener('focusout', e=>{
+    if(e.target) e.target._selectOnClick = false;
+  }, true);
+})();
+
 $('form').addEventListener('input', refresh);
 $('form').addEventListener('change', refresh);
 $('zoom').addEventListener('change', applyZoom);
@@ -895,7 +916,7 @@ $('btnReset').onclick = ()=>{
 /* =========================================================
    5. PWA（オフライン動作と自動更新）
    ========================================================= */
-const APP_VERSION = '1.0.6';
+const APP_VERSION = '1.0.7';
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
