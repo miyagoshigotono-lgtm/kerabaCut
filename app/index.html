@@ -51,6 +51,10 @@
   }
   input[type=number]{text-align:right}
   input:focus,select:focus,textarea:focus{outline:2px solid #bcd8f7;border-color:var(--accent)}
+  input:disabled,select:disabled,button:disabled{
+    background:#eef1f5;color:#a3aebc;border-color:#e2e7ee;cursor:not-allowed}
+  .row.off label{color:#a3aebc}
+  .row.off .unit{color:#a3aebc}
   textarea{resize:vertical;min-height:52px;line-height:1.5}
   .unit{flex:0 0 36px;font-size:16px;color:var(--ink)}
   .chk{display:flex;align-items:center;gap:8px;font-size:16px;color:var(--ink);padding:5px 0;
@@ -819,9 +823,25 @@ const $ = id => document.getElementById(id);
 
 function getParams(){ return Object.assign({}, DEFAULTS, readForm()); }
 
+// 使わない部材の寸法欄は入力できないようにする
+function updateEnabled(p){
+  const off = (id, disabled)=>{
+    const el = $(id);
+    if(!el) return;
+    el.disabled = disabled;
+    const row = el.closest('.row');
+    if(row) row.classList.toggle('off', disabled);
+  };
+  const noHana = (p.hanaShimo==='none' && p.hanaKami==='none');
+  off('tHana', noHana);
+  off('hHanaOrder', noHana);
+  $('btnCalcHana').disabled = noHana;
+}
+
 function refresh(){
   const p = getParams();
   const g = geometry(p);
+  updateEnabled(p);
   $('sheet').innerHTML = renderSVG(p);
   $('sheet').className = 'sheet ' + (p.orient==='portrait' ? 'port' : 'land');
   $('sheetOrd').innerHTML = renderOrderSVG(p);
@@ -851,6 +871,25 @@ function applyZoom(){
 }
 
 /* ---- イベント ---- */
+// 数値欄の上でホイールを回したり上下キーを押しても値を変えない。
+// 代わりに入力エリア全体をスクロールさせる。
+(function(){
+  const isNum = t => t && t.tagName==='INPUT' && t.type==='number';
+  const box = $('form');
+  box.addEventListener('wheel', e=>{
+    if(!isNum(e.target)) return;              // 数値欄の上だけ横取りする
+    e.preventDefault();
+    const unit = e.deltaMode===1 ? 16 : (e.deltaMode===2 ? box.clientHeight : 1);
+    box.scrollTop += e.deltaY * unit;
+  }, {passive:false});
+  box.addEventListener('keydown', e=>{
+    if(!isNum(e.target)) return;
+    if(e.key!=='ArrowUp' && e.key!=='ArrowDown') return;
+    e.preventDefault();
+    box.scrollTop += (e.key==='ArrowDown' ? 48 : -48);
+  });
+})();
+
 // 入力欄をクリック（またはTabで移動）したら中身を全選択して、すぐ打ち直せるようにする
 (function(){
   const target = t => t && t.tagName==='INPUT' && (t.type==='number' || t.type==='text');
@@ -916,7 +955,7 @@ $('btnReset').onclick = ()=>{
 /* =========================================================
    5. PWA（オフライン動作と自動更新）
    ========================================================= */
-const APP_VERSION = '1.0.7';
+const APP_VERSION = '1.0.8';
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
