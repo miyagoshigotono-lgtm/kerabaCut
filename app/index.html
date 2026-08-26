@@ -93,15 +93,16 @@
     .main{display:block;overflow:visible}
     .stage{padding:0;gap:0;display:block}
     .sheetwrap{height:auto!important;width:auto!important}
-    .sheet{box-shadow:none;transform:none!important;break-after:page;page-break-after:always}
-    .sheetwrap:last-child .sheet{break-after:auto;page-break-after:auto}
+    .sheet{box-shadow:none;transform:none!important;break-after:auto;page-break-after:auto}
     body.p-dwg .w-ord{display:none!important}
     body.p-ord .w-dwg{display:none!important}
+    /* 2枚まとめて出すときだけ、1枚目の後で改ページする */
+    body.p-both .w-dwg .sheet{break-after:page;page-break-after:always}
   }
   .sheet.land{page:pgL}
   .sheet.port{page:pgP}
 </style>
-<style id="pageStyle">@page pgL{size:A4 landscape;margin:0}@page pgP{size:A4 portrait;margin:0}</style>
+<style id="pageStyle">@page{margin:0}@page pgL{size:A4 landscape;margin:0}@page pgP{size:A4 portrait;margin:0}</style>
 </head>
 <body>
 <div class="app">
@@ -192,7 +193,8 @@
           <label class="chk"><input type="checkbox" id="dHafuW" checked>破風板寸法</label>
           <label class="chk"><input type="checkbox" id="dTaruki" checked>垂木成</label>
           <label class="chk"><input type="checkbox" id="dNoji" checked>合板厚</label>
-          <label class="chk"><input type="checkbox" id="dOver" checked>合板の出</label>
+          <label class="chk"><input type="checkbox" id="dOverS" checked>水下合板寸法</label>
+          <label class="chk"><input type="checkbox" id="dOverK" checked>水上合板寸法</label>
           <label class="chk"><input type="checkbox" id="dSlope" checked>勾配マーク</label>
         </div>
       </fieldset>
@@ -249,7 +251,7 @@ const FIELDS = {
   clearance:'num',
   dHana:'bool', dThick:'bool', dMoya:'bool', dShort:'bool', dClear:'bool', dHatch:'bool',
   d225:'bool', dMoyaW:'bool', dCenter:'bool',
-  dHafuW:'bool', dTaruki:'bool', dNoji:'bool', dOver:'bool', dSlope:'bool',
+  dHafuW:'bool', dTaruki:'bool', dNoji:'bool', dOverS:'bool', dOverK:'bool', dSlope:'bool',
   orient:'text', fscale:'num', lscale:'num', note:'text',
   ordHafu:'text',
   ordHafuSp:'text', ordHafuLen:'text', ordHafuQty:'text',
@@ -265,7 +267,7 @@ const DEFAULTS = {
   clearance:0,
   dHana:true, dThick:true, dMoya:true, dShort:true, dClear:true, dHatch:true,
   d225:true, dMoyaW:true, dCenter:true,
-  dHafuW:true, dTaruki:true, dNoji:true, dOver:true, dSlope:true,
+  dHafuW:true, dTaruki:true, dNoji:true, dOverS:true, dOverK:true, dSlope:true,
   orient:'landscape', fscale:1, lscale:1, note:'',
   ordHafu:'p3',
   ordHafuSp:'', ordHafuLen:'', ordHafuQty:'',
@@ -341,9 +343,13 @@ function geometry(p){
 
   const totalW = Math.max(tHana*3+50, num(p.total,500));   // 鼻隠し外面〜外面
   const L      = totalW - tHana;                            // 左鼻隠し左面→右鼻隠し左面
-  // 垂木の木口が基準。マイナスなら木口より内側で合板を止める
-  const ovS    = num(p.ovShimo,40);                         // 合板の出（水下＝左）
-  const ovK    = num(p.ovKami,40);                          // 合板の出（水上＝右）
+  // 垂木の木口が基準。マイナスなら木口より内側で合板を止める。
+  // 空欄（null）なら「合板を切らない」＝垂木と同じ長さで線を止め、小口も寸法も描かない
+  const orNull = v => (v===null||v===undefined||!isFinite(v)) ? null : v;
+  const ovS    = orNull(p.ovShimo);                         // 合板の出（水下＝左）
+  const ovK    = orNull(p.ovKami);                          // 合板の出（水上＝右）
+  const capS   = (ovS !== null);                            // 水下の小口を描くか
+  const capK   = (ovK !== null);
 
   // 4本の勾配ライン（y は下向き正）
   const lnC = x => -x*tan - tNoji/cos;      // 野地板天
@@ -407,12 +413,13 @@ function geometry(p){
   // 合板（野地板）の端部は常にカネ＝合板に対して直角。
   // 出は「垂木の木口（＝鼻隠し内面）から合板先端まで」を合板下端ラインに沿って測る。
   // 天端の端点は直角方向へ板厚ぶん寄るため、x が tNoji*sin だけ水下側にずれる。
-  const xEndL = bS.innerX - ovS*cos;
-  const xEndR = bK.innerX + ovK*cos;
+  const xEndL = bS.innerX - (capS ? ovS*cos : 0);
+  const xEndR = bK.innerX + (capK ? ovK*cos : 0);
   const endLD = [xEndL, lnD(xEndL)];
-  const endLC = [xEndL - tNoji*sin, lnC(xEndL - tNoji*sin)];
   const endRD = [xEndR, lnD(xEndR)];
-  const endRC = [xEndR - tNoji*sin, lnC(xEndR - tNoji*sin)];
+  // 切るときだけ天端が直角方向へずれる。切らないときは垂木木口で真っ直ぐ止める
+  const endLC = capS ? [xEndL - tNoji*sin, lnC(xEndL - tNoji*sin)] : [xEndL, lnC(xEndL)];
+  const endRC = capK ? [xEndR - tNoji*sin, lnC(xEndR - tNoji*sin)] : [xEndR, lnC(xEndR)];
 
   // ケラバカット位置＝破風板下端と平行、そこからクリアランスぶん上（直角方向）
   const clearance = Math.max(0, num(p.clearance,0));
@@ -435,7 +442,7 @@ function geometry(p){
   const ord = (m, face) => (hOrder!==null && m==='tatsu') ? hOrder : Math.round(face);
   return {pitch,tan,th,cos,sin,tNoji,hTaruki,tHafu,wHafu,tHana,hHana,hTatsu,hasHafu,
           moyaSize,notchRef,moya,totalW,L,ovS,ovK,xEndL,xEndR,endLD,endLC,endRD,endRC,
-          modeS,modeK,bS,bK,hS,hK,clearance,
+          modeS,modeK,bS,bK,hS,hK,clearance,capS,capK,
           lnA,lnB,lnC,lnD,lnCut,dimMoya,dimMoyaShort,
           faceAutoS:faceAuto(modeS), faceAutoK:faceAuto(modeK),
           hHanaOrderS:ord(modeS, faceS), hHanaOrderK:ord(modeK, faceK)};
@@ -586,8 +593,8 @@ function buildContent(p, g){
   // 垂木天は合板の出がマイナスでも鼻隠しまで通す（合板下端と同じライン）
   const dL = Math.min(g.endLD[0], 0), dR = Math.max(g.endRD[0], g.totalW);
   line(PX(dL),PY(g.lnD(dL)), PX(dR),PY(g.lnD(dR)), W_OUT);                    // 野地板下端＝垂木天
-  seg(g.endLD,g.endLC,W_OUT);                                                  // 水下小口（カネ＝野地板に直角）
-  seg(g.endRD,g.endRC,W_OUT);                                                  // 水上小口（カネ＝野地板に直角）
+  if(g.capS) seg(g.endLD,g.endLC,W_OUT);                                       // 水下小口（カネ＝合板に直角）
+  if(g.capK) seg(g.endRD,g.endRC,W_OUT);                                       // 水上小口（カネ＝合板に直角）
   line(PX(g.bS.bX),PY(g.lnB(g.bS.bX)),PX(g.bK.bX),PY(g.lnB(g.bK.bX)),W_OUT);   // 垂木下端
   if(g.hasHafu)
     line(PX(g.bS.aX),PY(g.lnA(g.bS.aX)),PX(g.bK.aX),PY(g.lnA(g.bK.aX)),W_OUT); // 破風板下端
@@ -662,11 +669,11 @@ function buildContent(p, g){
   // 野地板の出（野地板下端が基準／野地板の上へ逃がす）
   const ovOff = -(g.tNoji*k + F_DIM*1.5);
   // マイナスのときは寸法線の向きが反転するので、逃がす側も合わせて反転させる
-  if(p.dOver && Math.abs(g.ovS) > 0.01)
+  if(p.dOverS && g.capS && Math.abs(g.ovS) > 0.01)
     dim(PX(g.endLD[0]),PY(g.endLD[1]),
         PX(g.bS.innerX),PY(g.lnD(g.bS.innerX)),
         g.ovS >= 0 ? ovOff : -ovOff, fmt(Math.abs(g.ovS)));
-  if(p.dOver && Math.abs(g.ovK) > 0.01)
+  if(p.dOverK && g.capK && Math.abs(g.ovK) > 0.01)
     dim(PX(g.bK.innerX),PY(g.lnD(g.bK.innerX)),
         PX(g.endRD[0]),PY(g.endRD[1]),
         g.ovK >= 0 ? ovOff : -ovOff, fmt(Math.abs(g.ovK)));
@@ -677,7 +684,7 @@ function buildContent(p, g){
     const mk = Math.min(k, 20/Math.max(1e-6, 100*g.tan));
     const run = 100*mk, rise = 100*g.tan*mk;
     const mx = PX(0) + 12;
-    const clear = F_DIM*1.9 + (p.dOver ? F_DIM*1.6 : 0);
+    const clear = F_DIM*1.9 + ((p.dOverS && g.capS) ? F_DIM*1.6 : 0);
     const myBase = Math.max(headB+F_DIM, PY(g.lnC((mx-ox+run)/k)) - clear - rise);
     line(mx, myBase, mx+run, myBase, W_OUT);                 // 基準（100）
     line(mx, myBase, mx, myBase+rise, W_OUT);                // 立上り
@@ -971,7 +978,7 @@ $('btnReset').onclick = ()=>{
 /* =========================================================
    5. PWA（オフライン動作と自動更新）
    ========================================================= */
-const APP_VERSION = '1.0.10';
+const APP_VERSION = '1.0.11';
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
