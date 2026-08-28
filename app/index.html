@@ -61,6 +61,11 @@
        flex:0 0 calc(50% - 6px);min-width:0;line-height:1.35}
   .chk input{margin:0;flex:0 0 auto;width:17px;height:17px}
   .chkgrid{display:flex;flex-wrap:wrap;gap:0 12px}
+  .boxgrp{background:#f6f8fb;border:1px solid #e4eaf2;border-radius:6px;
+          padding:7px 11px 9px;margin:0 0 9px}
+  .boxgrp > b{display:block;font-size:14px;color:var(--sub);font-weight:700;
+              margin:0 0 3px;letter-spacing:.04em}
+  .boxgrp:last-child{margin-bottom:0}
   .hint{font-size:14px;color:var(--sub);line-height:1.6;margin:6px 0 0}
 
   button{
@@ -179,23 +184,38 @@
 
       <fieldset>
         <legend>表示・寸法線</legend>
-        <div class="chkgrid">
+        <div class="boxgrp"><b>鼻隠し</b><div class="chkgrid">
           <label class="chk"><input type="checkbox" id="dHana" checked>鼻隠し寸法</label>
           <label class="chk"><input type="checkbox" id="dThick" checked>鼻隠し厚</label>
-          <label class="chk"><input type="checkbox" id="dMoya" checked>ケラバカット寸法</label>
-          <label class="chk"><input type="checkbox" id="dShort" checked>ケラバカット(短い方)</label>
-          <label class="chk"><input type="checkbox" id="dClear" checked>クリアランス寸法</label>
-          <label class="chk"><input type="checkbox" id="dHatch" checked>ケラバカット</label>
-          <label class="chk"><input type="checkbox" id="d225" checked>芯から22.5</label>
-          <label class="chk"><input type="checkbox" id="dMoyaW" checked>母屋寸法</label>
-          <label class="chk"><input type="checkbox" id="dCenter" checked>母屋芯線</label>
+        </div></div>
+
+        <div class="boxgrp"><b>勾配直角の寸法</b><div class="chkgrid">
           <label class="chk"><input type="checkbox" id="dHafuW" checked>破風板寸法</label>
           <label class="chk"><input type="checkbox" id="dTaruki" checked>垂木成</label>
           <label class="chk"><input type="checkbox" id="dNoji" checked>合板厚</label>
+        </div></div>
+
+        <div class="boxgrp"><b>合板の出</b><div class="chkgrid">
           <label class="chk"><input type="checkbox" id="dOverS" checked>水下合板寸法</label>
           <label class="chk"><input type="checkbox" id="dOverK" checked>水上合板寸法</label>
+        </div></div>
+
+        <div class="boxgrp"><b>母屋</b><div class="chkgrid">
+          <label class="chk"><input type="checkbox" id="dMoyaW" checked>母屋寸法</label>
+          <label class="chk"><input type="checkbox" id="dCenter" checked>母屋芯線</label>
+          <label class="chk"><input type="checkbox" id="d225" checked>芯から22.5</label>
+        </div></div>
+
+        <div class="boxgrp"><b>ケラバカット</b><div class="chkgrid">
+          <label class="chk"><input type="checkbox" id="dHatch" checked>ケラバカット</label>
+          <label class="chk"><input type="checkbox" id="dMoya" checked>ケラバカット寸法</label>
+          <label class="chk"><input type="checkbox" id="dShort" checked>同（短い方）</label>
+          <label class="chk"><input type="checkbox" id="dClear" checked>クリアランス寸法</label>
+        </div></div>
+
+        <div class="boxgrp"><b>その他</b><div class="chkgrid">
           <label class="chk"><input type="checkbox" id="dSlope" checked>勾配マーク</label>
-        </div>
+        </div></div>
       </fieldset>
 
 
@@ -994,7 +1014,7 @@ $('btnReset').onclick = ()=>{
 /* =========================================================
    5. PWA（オフライン動作と自動更新）
    ========================================================= */
-const APP_VERSION = '1.0.12';
+const APP_VERSION = '1.0.13';
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
