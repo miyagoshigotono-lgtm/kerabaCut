@@ -93,16 +93,15 @@
     .main{display:block;overflow:visible}
     .stage{padding:0;gap:0;display:block}
     .sheetwrap{height:auto!important;width:auto!important}
-    .sheet{box-shadow:none;transform:none!important;break-after:auto;page-break-after:auto}
+    .sheet{box-shadow:none;transform:none!important;break-after:auto;page-break-after:auto;
+           -webkit-print-color-adjust:exact;print-color-adjust:exact}
     body.p-dwg .w-ord{display:none!important}
     body.p-ord .w-dwg{display:none!important}
     /* 2枚まとめて出すときだけ、1枚目の後で改ページする */
     body.p-both .w-dwg .sheet{break-after:page;page-break-after:always}
   }
-  .sheet.land{page:pgL}
-  .sheet.port{page:pgP}
 </style>
-<style id="pageStyle">@page{margin:0}@page pgL{size:A4 landscape;margin:0}@page pgP{size:A4 portrait;margin:0}</style>
+<style id="pageStyle"></style>
 </head>
 <body>
 <div class="app">
@@ -935,10 +934,26 @@ $('form').addEventListener('change', refresh);
 $('zoom').addEventListener('change', applyZoom);
 window.addEventListener('resize', applyZoom);
 
-function doPrint(mode){                    // 'dwg' | 'ord' | 'both'
+// 用紙の向きは印刷するものだけを宣言する。
+// 横と縦の両方を常に書いておくと、1枚しか出さないときでも Chrome が
+// 「向きが混在した文書」と判断して、印刷プレビューのレイアウト選択が壊れる。
+const PAGE_CSS = {
+  dwg : '@page{size:A4 landscape;margin:0}',
+  ord : '@page{size:A4 portrait;margin:0}',
+  both: '@page{margin:0}'
+      + '@page pgL{size:A4 landscape;margin:0}'
+      + '@page pgP{size:A4 portrait;margin:0}'
+      + '.sheet.land{page:pgL}.sheet.port{page:pgP}'
+};
+function setPrintMode(mode){
   document.body.classList.remove('p-dwg','p-ord','p-both');
   document.body.classList.add('p-'+mode);
-  window.print();
+  $('pageStyle').textContent = PAGE_CSS[mode];
+}
+function doPrint(mode){                    // 'dwg' | 'ord' | 'both'
+  setPrintMode(mode);
+  // 差し替えたスタイルが反映されてから印刷ダイアログを開く
+  requestAnimationFrame(()=> requestAnimationFrame(()=> window.print()));
 }
 $('btnPrintDwg').onclick  = ()=> doPrint('dwg');
 $('btnPrintOrd').onclick  = ()=> doPrint('ord');
@@ -967,6 +982,7 @@ $('btnReset').onclick = ()=>{
   }catch(e){ ok=false; }
   writeForm(Object.assign({}, DEFAULTS, last||{}));
   refresh();
+  setPrintMode('both');
   if(!ok){
     const b=document.getElementById('updBar');
     b.style.background='#ffe6e6'; b.style.borderColor='#e0a0a0'; b.style.color='#8a2020';
@@ -978,7 +994,7 @@ $('btnReset').onclick = ()=>{
 /* =========================================================
    5. PWA（オフライン動作と自動更新）
    ========================================================= */
-const APP_VERSION = '1.0.11';
+const APP_VERSION = '1.0.12';
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
