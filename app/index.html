@@ -50,6 +50,9 @@
     font-family:inherit;font-size:18px;background:#fbfcfe;color:var(--ink);
   }
   input[type=number]{text-align:right}
+  .row.slider{gap:12px;margin:12px 0 6px}
+  .row.slider input[type=range]{flex:1 1 auto;min-width:0;height:28px;accent-color:var(--accent);cursor:pointer}
+  .slend{flex:0 0 auto;font-size:16px;font-weight:600;color:var(--sub)}
   input:focus,select:focus,textarea:focus{outline:2px solid #bcd8f7;border-color:var(--accent)}
   input:disabled,select:disabled,button:disabled{
     background:#eef1f5;color:#a3aebc;border-color:#e2e7ee;cursor:not-allowed}
@@ -171,8 +174,16 @@
       </fieldset>
 
       <fieldset>
-        <legend>図の範囲・合板の出</legend>
-        <div class="row"><label>全長（鼻隠し外面間）</label><input type="number" id="total" value="500" step="10"><span class="unit">mm</span></div>
+        <legend>スケール</legend>
+        <div class="row slider">
+          <span class="slend">縮</span>
+          <input type="range" id="total" min="300" max="1000" step="10" value="500">
+          <span class="slend">伸</span>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>合板の出</legend>
         <div class="row"><label>合板の出（水下）</label><input type="number" id="ovShimo" value="82" step="1"><span class="unit">mm</span></div>
         <div class="row"><label>合板の出（水上）</label><input type="number" id="ovKami" value="58" step="1"><span class="unit">mm</span></div>
       </fieldset>
@@ -530,7 +541,8 @@ function buildContent(p, g){
 
   /* ---- 描画領域とスケール ---- */
   const cutM = (g.bS.cut||g.bK.cut) ? EXTRA : 0;
-  const area = {x0:11+SIDE+cutM, y0:headB, x1:SW-11-SIDE-cutM, y1:footT};
+  // 上は勾配マーク・合板の出寸法、下は母屋寸法などが図の外にはみ出すので、そのぶん空けておく
+  const area = {x0:11+SIDE+cutM, y0:headB+F_DIM*2.4, x1:SW-11-SIDE-cutM, y1:footT-OFF*1.7};
 
   const xs = [g.endLC[0], g.endLD[0], g.endRC[0], g.endRD[0], g.moya.xL, g.moya.xR];
   const ys = [g.endLC[1], g.endLD[1], g.endRC[1], g.endRD[1],
@@ -1021,7 +1033,7 @@ $('btnReset').onclick = ()=>{
 /* =========================================================
    5. PWA（オフライン動作と自動更新）
    ========================================================= */
-const APP_VERSION = '1.0.14';
+const APP_VERSION = '1.0.15';
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
