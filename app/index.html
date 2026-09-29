@@ -37,6 +37,10 @@
           font-size:16px;color:#6b4e00;cursor:pointer}
   #updBar b{color:#8a5b00}
   @media print{ #updBar{display:none!important} }
+  .mode-tabs{display:flex;gap:8px;padding:10px 18px;border-bottom:1px solid var(--line);background:#f8fafc}
+  .mode-tab{flex:1;font-size:17px;font-weight:700;padding:9px 12px;color:var(--sub);background:#fff}
+  .mode-tab.is-active{color:#fff;background:var(--accent);border-color:var(--accent)}
+  .mode-tab.is-active:hover{background:var(--accent2);border-color:var(--accent2)}
   .scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:13px 18px 39px}
 
   fieldset{border:1px solid var(--line);border-radius:6px;margin:0 0 18px;padding:13px 16px 16px;
@@ -122,6 +126,11 @@
     </header>
 
     <div id="updBar">新しいバージョンがあります。<b>ここをクリックして更新</b></div>
+
+    <div class="mode-tabs" role="tablist" aria-label="屋根材の種類">
+      <button class="mode-tab is-active" id="tabNormal" type="button" role="tab" aria-selected="true">通常</button>
+      <button class="mode-tab" id="tabTile" type="button" role="tab" aria-selected="false">瓦</button>
+    </div>
 
     <div class="scroll" id="form">
 
@@ -305,6 +314,13 @@ const DEFAULTS = {
   ordHanaKSp:'', ordHanaKLen:'', ordHanaKQty:''
 };
 
+const STORAGE_KEYS = {
+  normal: 'keraba_last_normal_v1',
+  tile: 'keraba_last_tile_v1'
+};
+const LEGACY_NORMAL_STORAGE_KEY = 'keraba_last_v2';
+let activeMode = 'normal';
+
 function readForm(){
   const p = {};
   for(const k in FIELDS){
@@ -327,6 +343,23 @@ function writeForm(p){
     if(FIELDS[k]==='bool') el.checked = !!v;
     else el.value = (v===null||v===undefined) ? '' : v;
   }
+}
+
+function loadSavedForm(mode){
+  const key = STORAGE_KEYS[mode];
+  let saved = null;
+  try{
+    saved = JSON.parse(localStorage.getItem(key)||'null');
+    // 既存の通常入力は、新しい通常タブへ一度だけ引き継ぐ。
+    if(!saved && mode==='normal'){
+      saved = JSON.parse(localStorage.getItem(LEGACY_NORMAL_STORAGE_KEY)||'null');
+    }
+  }catch(e){}
+  return Object.assign({}, DEFAULTS, saved||{});
+}
+
+function saveCurrentForm(){
+  try{ localStorage.setItem(STORAGE_KEYS[activeMode], JSON.stringify(readForm())); }catch(e){}
 }
 
 /* =========================================================
@@ -927,7 +960,7 @@ function refresh(){
   $('sheetOrd').innerHTML = renderOrderSVG(p);
   $('pgLabel').textContent = 'ケラバ図 A4横　＋　発注書 A4縦';
   applyZoom();
-  try{ localStorage.setItem('keraba_last_v2', JSON.stringify(readForm())); }catch(e){}
+  saveCurrentForm();
 }
 
 function applyZoom(){
@@ -1024,21 +1057,35 @@ $('btnCalcHana').onclick = ()=>{
   refresh();
 };
 
+function selectMode(mode){
+  if(mode===activeMode) return;
+  saveCurrentForm();
+  activeMode = mode;
+  writeForm(loadSavedForm(mode));
+  $('tabNormal').classList.toggle('is-active', mode==='normal');
+  $('tabTile').classList.toggle('is-active', mode==='tile');
+  $('tabNormal').setAttribute('aria-selected', String(mode==='normal'));
+  $('tabTile').setAttribute('aria-selected', String(mode==='tile'));
+  refresh();
+}
+
+$('tabNormal').onclick = ()=> selectMode('normal');
+$('tabTile').onclick = ()=> selectMode('tile');
+
 $('btnReset').onclick = ()=>{
   if(!confirm('入力を既定値に戻します。よろしいですか？')) return;
-  try{ localStorage.removeItem('keraba_last_v2'); }catch(e){}
+  try{ localStorage.removeItem(STORAGE_KEYS[activeMode]); }catch(e){}
   writeForm(DEFAULTS);
   refresh();
 };
 
 /* ---- 起動 ---- */
 (function init(){
-  let last=null, ok=true;
+  let ok=true;
   try{
-    last = JSON.parse(localStorage.getItem('keraba_last_v2')||'null');
     localStorage.setItem('keraba_probe','1'); localStorage.removeItem('keraba_probe');
   }catch(e){ ok=false; }
-  writeForm(Object.assign({}, DEFAULTS, last||{}));
+  writeForm(loadSavedForm(activeMode));
   refresh();
   setPrintMode('both');
   if(!ok){
@@ -1052,7 +1099,7 @@ $('btnReset').onclick = ()=>{
 /* =========================================================
    5. PWA（オフライン動作と自動更新）
    ========================================================= */
-const APP_VERSION = '1.0.17';
+const APP_VERSION = '1.0.18';
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
