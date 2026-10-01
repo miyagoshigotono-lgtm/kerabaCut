@@ -365,6 +365,7 @@ const STORAGE_KEYS = {
   tile: 'keraba_last_tile_v1'
 };
 const LEGACY_NORMAL_STORAGE_KEY = 'keraba_last_v2';
+const TILE_PLYWOOD_DEFAULTS_KEY = 'keraba_tile_plywood_defaults_v1';
 let activeMode = 'normal';
 
 function readForm(){
@@ -399,6 +400,11 @@ function loadSavedForm(mode){
     // 既存の通常入力は、新しい通常タブへ一度だけ引き継ぐ。
     if(!saved && mode==='normal'){
       saved = JSON.parse(localStorage.getItem(LEGACY_NORMAL_STORAGE_KEY)||'null');
+    }
+    // 瓦は合板を破風・鼻隠しより外へ出さないため、初期値を0 mmへ移行する。
+    if(mode==='tile' && localStorage.getItem(TILE_PLYWOOD_DEFAULTS_KEY)!=='1'){
+      saved = Object.assign({}, saved||{}, {ovShimo:0, ovKami:0});
+      localStorage.setItem(TILE_PLYWOOD_DEFAULTS_KEY,'1');
     }
   }catch(e){}
   return Object.assign({}, DEFAULTS, saved||{});
@@ -749,7 +755,8 @@ function buildContent(p, g){
     line(PX(xc),PY(g.lnD(xc)),PX(xc),PY(yb),W_OUT);
   }
   if(g.hasHafu){
-    line(PX(g.bS.aX),PY(g.lnHafu(g.bS.aX)),PX(g.bK.aX),PY(g.lnHafu(g.bK.aX)),W_OUT); // 破風板天端
+    line(PX(g.bS.aX),PY(g.lnHafu(g.bS.aX)),PX(g.bK.aX),PY(g.lnHafu(g.bK.aX)),W_OUT,
+         g.isTile ? '2.2 1.5' : null); // 瓦では破風板ラインを点線で表示
     line(PX(g.bS.aX),PY(g.lnA(g.bS.aX)),PX(g.bK.aX),PY(g.lnA(g.bK.aX)),W_OUT);        // 破風板下端
   }
 
@@ -760,6 +767,16 @@ function buildContent(p, g){
   }
   if(g.bS.poly) drawBoard(g.bS);
   if(g.bK.poly) drawBoard(g.bK);
+
+  // 瓦の位置基準ライン。鼻隠しは水上側の指定ラインを代表として示す。
+  if(g.isTile){
+    const guide = (label, lineY, x0, x1, tx, ty)=>{
+      line(PX(x0),PY(lineY(x0)),PX(x1),PY(lineY(x1)),W_DIM,'2.2 1.5');
+      text(PX(tx), PY(lineY(tx))+ty, `▼${label}`, F_SML, 'middle', -g.th*180/Math.PI);
+    };
+    if(g.bK.poly) guide('鼻隠しライン', g.offsets.kami.line, g.totalW*0.12, g.totalW*1.05, g.totalW*0.76, -F_SML*1.2);
+    if(g.hasHafu) guide('破風板ライン', g.lnHafu, g.totalW*0.10, g.totalW*0.93, g.totalW*0.48, F_SML*1.65);
+  }
 
   /* ---- 母屋（断面） ---- */
   const M = g.moya;
