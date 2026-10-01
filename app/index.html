@@ -809,11 +809,8 @@ function buildContent(p, g){
   }
   // 瓦：各部材の天端オフセット。基準線と方向が図面だけで分かるように明記する。
   if(g.isTile){
-    const offsetName = {hafu:'破風板天端', shimo:'水下鼻隠し天端', kami:'水上鼻隠し天端'};
-    const refName = v => v==='noji' ? '合板天端' : '垂木天端';
-    const dirName = v => v==='perpendicular' ? '勾配に垂直' : '鉛直';
     const signed = v => (v>0?'+':'') + fmt(v);
-    const drawOffset = (key, item, x, off)=>{
+    const drawOffset = (item, x, off)=>{
       const refLine = item.ref==='noji' ? g.lnC : g.lnD;
       const a=[x,refLine(x)];
       const b=item.dir==='perpendicular'
@@ -821,11 +818,10 @@ function buildContent(p, g){
         : [x,refLine(x)-item.value];
       const A=P2(a), B=P2(b);
       dim(A[0],A[1],B[0],B[1],off,signed(item.value));
-      text(B[0], B[1]-F_SML*0.8, `${offsetName[key]}（${refName(item.ref)}・${dirName(item.dir)}）`, F_SML, 'middle');
     };
-    if(g.hasHafu) drawOffset('hafu', g.offsets.hafu, g.totalW*0.62, -OFF*1.25);
-    if(g.bS.poly) drawOffset('shimo', g.offsets.shimo, 0, -SIDE*2.05);
-    if(g.bK.poly) drawOffset('kami', g.offsets.kami, g.totalW, SIDE*2.05);
+    if(g.hasHafu) drawOffset(g.offsets.hafu, g.totalW*0.62, -OFF*1.25);
+    if(g.bS.poly) drawOffset(g.offsets.shimo, 0, -SIDE*2.05);
+    if(g.bK.poly) drawOffset(g.offsets.kami, g.totalW, SIDE*2.05);
   }
   // 母屋まわり
   if(p.dMoya  && g.hasHafu) dim(PX(M.xL),PY(M.yT), PX(M.xL),PY(g.lnCut(M.xL)),  OFF, fmt(g.dimMoya));
