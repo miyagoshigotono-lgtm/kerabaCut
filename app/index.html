@@ -649,6 +649,12 @@ function buildContent(p, g){
               g.moya.yT, g.moya.yT+g.moyaSize];
   [g.bS,g.bK].forEach(b=>{ if(b.poly) b.poly.forEach(q=>{ xs.push(q[0]); ys.push(q[1]); }); });
   if(g.hasHafu) [g.bS.aX,g.bK.aX].forEach(x=>{ xs.push(x); ys.push(g.lnA(x)); });
+  // 瓦の点線ガイドと天端位置も縮尺計算へ含め、用紙端からはみ出さないようにする。
+  if(g.isTile){
+    [g.offsets.hafu.line, g.offsets.kami.line].forEach(lineY=>{
+      [0, g.totalW].forEach(x=>{ xs.push(x); ys.push(lineY(x)); });
+    });
+  }
 
   const minX=Math.min(...xs), maxX=Math.max(...xs);
   const minY=Math.min(...ys), maxY=Math.max(...ys);
@@ -772,10 +778,10 @@ function buildContent(p, g){
   if(g.isTile){
     const guide = (label, lineY, x0, x1, tx, ty)=>{
       line(PX(x0),PY(lineY(x0)),PX(x1),PY(lineY(x1)),W_DIM,'2.2 1.5');
-      text(PX(tx), PY(lineY(tx))+ty, `▼${label}`, F_SML, 'middle', -g.th*180/Math.PI);
+      text(PX(tx), PY(lineY(tx))+ty, `▼${label}`, F_SML, 'middle');
     };
-    if(g.bK.poly) guide('鼻隠しライン', g.offsets.kami.line, g.totalW*0.12, g.totalW*1.05, g.totalW*0.76, -F_SML*1.2);
-    if(g.hasHafu) guide('破風板ライン', g.lnHafu, g.totalW*0.10, g.totalW*0.93, g.totalW*0.48, F_SML*1.65);
+    if(g.bK.poly) guide('鼻隠しライン', g.offsets.kami.line, g.totalW*0.14, g.totalW*0.94, g.totalW*0.72, -F_SML*2.2);
+    if(g.hasHafu) guide('破風板ライン', g.lnHafu, g.totalW*0.12, g.totalW*0.90, g.totalW*0.34, -F_SML*1.4);
   }
 
   /* ---- 母屋（断面） ---- */
