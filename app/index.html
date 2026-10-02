@@ -775,7 +775,10 @@ function buildContent(p, g){
     const guide = (label, lineY, x0, x1, tx, ty)=>{
       line(PX(x0),PY(lineY(x0)),PX(x1),PY(lineY(x1)),W_DIM,'2.2 1.5');
       // 鼻隠しのオフセット方向に関わらず、基準ラインは屋根勾配と平行に表す。
-      text(PX(tx), PY(lineY(tx))+ty, `▼${label}`, F_SML, 'middle', -g.th*180/Math.PI);
+      // 注記の▼が点線へ重ならないよう、勾配直角方向へ十分に離して配置する。
+      const clear = Math.max(F_SML*2.35, Math.abs(ty));
+      text(PX(tx)-g.sin*clear, PY(lineY(tx))-g.cos*clear,
+           `▼${label}`, F_SML, 'middle', -g.th*180/Math.PI);
     };
     const sameHanaOffset = ['ref','dir','side','value'].every(k=>g.offsets.shimo[k]===g.offsets.kami[k]);
     const splitHanaGuide = g.bS.poly && g.bK.poly && !sameHanaOffset;
@@ -832,8 +835,9 @@ function buildContent(p, g){
       dim(A[0],A[1],B[0],B[1],off,signed(item.value));
     };
     if(g.hasHafu) drawOffset(g.offsets.hafu, g.totalW*0.62, -OFF*1.25);
-    if(g.bS.poly) drawOffset(g.offsets.shimo, g.offsets.shimo.side==='outer' ? g.bS.outerX : g.bS.innerX, -SIDE*1.1);
-    if(g.bK.poly) drawOffset(g.offsets.kami, g.offsets.kami.side==='outer' ? g.bK.outerX : g.bK.innerX, SIDE*2.05);
+    // 鼻隠しのオフセット寸法は、外側の全体寸法と重ねず必ず部材の内側へ配置する。
+    if(g.bS.poly) drawOffset(g.offsets.shimo, g.offsets.shimo.side==='outer' ? g.bS.outerX : g.bS.innerX, SIDE*0.9);
+    if(g.bK.poly) drawOffset(g.offsets.kami, g.offsets.kami.side==='outer' ? g.bK.outerX : g.bK.innerX, -SIDE*0.9);
   }
   // 母屋まわり
   if(p.dMoya  && g.hasHafu) dim(PX(M.xL),PY(M.yT), PX(M.xL),PY(g.lnCut(M.xL)),  OFF, fmt(g.dimMoya));
