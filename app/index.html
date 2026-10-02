@@ -772,26 +772,30 @@ function buildContent(p, g){
 
   // 瓦の位置基準ライン。水下・水上の条件が一致するときだけ鼻隠しラインを共通化する。
   if(g.isTile){
-    const guide = (label, lineY, x0, x1, tx, ty)=>{
+    const guide = (label, lineY, x0, x1, tx)=>{
       line(PX(x0),PY(lineY(x0)),PX(x1),PY(lineY(x1)),W_DIM,'2.2 1.5');
-      // 鼻隠しのオフセット方向に関わらず、基準ラインは屋根勾配と平行に表す。
-      // 注記の▼が点線へ重ならないよう、勾配直角方向へ少しだけ離して配置する。
-      // 離しすぎず、どの点線を示しているかが一目で分かる距離に保つ。
-      const clear = Math.max(F_SML*1.55, Math.abs(ty)*0.7);
-      text(PX(tx)-g.sin*clear, PY(lineY(tx))-g.cos*clear,
-           `▼${label}`, F_SML, 'middle', -g.th*180/Math.PI);
+      // ▼は実際の三角形で描き、先端を必ず対応する点線へ接触させる。
+      // 文字は勾配に沿わせ、横方向の位置だけを振り分けて重なりを避ける。
+      const tip=[PX(tx),PY(lineY(tx))];
+      const ux=g.cos, uy=-g.sin;
+      const nx=-g.sin, ny=-g.cos;              // 点線より上側への法線
+      const triH=F_SML*1.05, triW=F_SML*0.82;
+      const base=[tip[0]+nx*triH,tip[1]+ny*triH];
+      poly([tip,[base[0]-ux*triW,base[1]-uy*triW],[base[0]+ux*triW,base[1]+uy*triW]],0,'#000');
+      text(base[0]+ux*(triW+F_SML*0.28), base[1]+uy*(triW+F_SML*0.28),
+           label, F_SML, 'start', -g.th*180/Math.PI);
     };
     const sameHanaOffset = ['ref','dir','side','value'].every(k=>g.offsets.shimo[k]===g.offsets.kami[k]);
     const splitHanaGuide = g.bS.poly && g.bK.poly && !sameHanaOffset;
     if(g.bS.poly && g.bK.poly && sameHanaOffset){
-      guide('鼻隠しライン', g.offsets.shimo.line, g.totalW*0.14, g.totalW*0.94, g.totalW*0.72, -F_SML*2.2);
+      guide('鼻隠しライン', g.offsets.shimo.line, g.totalW*0.14, g.totalW*0.94, g.totalW*0.74);
     }else{
-      if(g.bK.poly) guide('鼻隠し(水上)ライン', g.offsets.kami.line, g.totalW*0.14, g.totalW*0.94, g.totalW*0.77, -F_SML*2.2);
-      if(g.bS.poly) guide('鼻隠し(水下)ライン', g.offsets.shimo.line, g.totalW*0.06, g.totalW*0.86, g.totalW*0.20, -F_SML*2.2);
+      if(g.bK.poly) guide('鼻隠し(水上)ライン', g.offsets.kami.line, g.totalW*0.14, g.totalW*0.94, g.totalW*0.74);
+      if(g.bS.poly) guide('鼻隠し(水下)ライン', g.offsets.shimo.line, g.totalW*0.06, g.totalW*0.86, g.totalW*0.08);
     }
-    // 水下・水上を分けて表示する場合は、破風板注記を右側へ寄せて文字が重ならないようにする。
+    // 破風板注記は鼻隠し注記との間隔を確保した位置へ置く。
     if(g.hasHafu) guide('破風板ライン', g.lnHafu, g.totalW*0.12, g.totalW*0.90,
-                         g.totalW*(splitHanaGuide ? 0.64 : 0.48), -F_SML*1.4);
+                         g.totalW*(splitHanaGuide ? 0.42 : 0.42));
   }
 
   /* ---- 母屋（断面） ---- */
