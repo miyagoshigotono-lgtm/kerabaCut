@@ -775,8 +775,9 @@ function buildContent(p, g){
     const guide = (label, lineY, x0, x1, tx, ty)=>{
       line(PX(x0),PY(lineY(x0)),PX(x1),PY(lineY(x1)),W_DIM,'2.2 1.5');
       // 鼻隠しのオフセット方向に関わらず、基準ラインは屋根勾配と平行に表す。
-      // 注記の▼が点線へ重ならないよう、勾配直角方向へ十分に離して配置する。
-      const clear = Math.max(F_SML*2.35, Math.abs(ty));
+      // 注記の▼が点線へ重ならないよう、勾配直角方向へ少しだけ離して配置する。
+      // 離しすぎず、どの点線を示しているかが一目で分かる距離に保つ。
+      const clear = Math.max(F_SML*1.55, Math.abs(ty)*0.7);
       text(PX(tx)-g.sin*clear, PY(lineY(tx))-g.cos*clear,
            `▼${label}`, F_SML, 'middle', -g.th*180/Math.PI);
     };
@@ -790,7 +791,7 @@ function buildContent(p, g){
     }
     // 水下・水上を分けて表示する場合は、破風板注記を右側へ寄せて文字が重ならないようにする。
     if(g.hasHafu) guide('破風板ライン', g.lnHafu, g.totalW*0.12, g.totalW*0.90,
-                         g.totalW*(splitHanaGuide ? 0.64 : 0.34), -F_SML*1.4);
+                         g.totalW*(splitHanaGuide ? 0.64 : 0.48), -F_SML*1.4);
   }
 
   /* ---- 母屋（断面） ---- */
