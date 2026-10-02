@@ -77,7 +77,8 @@
   .offset-group{padding:10px 12px;margin:0 0 10px;background:#f6f8fb;border:1px solid #e4eaf2;border-radius:6px}
   .offset-group:last-child{margin-bottom:0}
   .offset-group b{display:block;margin:0 0 7px;font-size:16px;color:var(--accent2)}
-  .offset-grid{display:grid;grid-template-columns:1fr 1.2fr 1fr auto;gap:7px;align-items:center}
+  .offset-grid{display:grid;grid-template-columns:1.05fr 1.25fr .7fr .8fr auto;gap:7px;align-items:center}
+  .offset-grid.no-side{grid-template-columns:1.05fr 1.25fr 1fr auto}
   .offset-grid select,.offset-grid input{width:100%;min-width:0;padding:6px 7px;font-size:16px}
   .offset-grid .unit{width:auto;flex:none;font-size:15px}
   .tile-only{display:none}
@@ -189,10 +190,10 @@
         <legend>瓦：天端オフセット</legend>
         <div class="offset-group" data-offset-part="hafu">
           <b>破風板 天端</b>
-          <div class="offset-grid">
+          <div class="offset-grid no-side">
             <select id="tileHafuRef" aria-label="破風板の基準"><option value="noji">合板天端</option><option value="taruki">垂木天端</option></select>
-            <select id="tileHafuDir" aria-label="破風板の方向"><option value="vertical">鉛直</option><option value="perpendicular">勾配に垂直</option></select>
-            <input type="number" id="tileHafuOffset" value="0" step="1" aria-label="破風板のオフセット">
+            <select id="tileHafuDir" aria-label="破風板の方向"><option value="vertical">鉛直</option><option value="perpendicular" selected>勾配に垂直</option></select>
+            <input type="number" id="tileHafuOffset" value="20" step="1" aria-label="破風板のオフセット">
             <span class="unit">mm</span>
           </div>
         </div>
@@ -201,7 +202,8 @@
           <div class="offset-grid">
             <select id="tileHanaSRef" aria-label="水下鼻隠しの基準"><option value="noji">合板天端</option><option value="taruki">垂木天端</option></select>
             <select id="tileHanaSDir" aria-label="水下鼻隠しの方向"><option value="vertical">鉛直</option><option value="perpendicular">勾配に垂直</option></select>
-            <input type="number" id="tileHanaSOffset" value="0" step="1" aria-label="水下鼻隠しのオフセット">
+            <select id="tileHanaSSide" aria-label="水下鼻隠しの基準面"><option value="inner" selected>内寸</option><option value="outer">外寸</option></select>
+            <input type="number" id="tileHanaSOffset" value="40" step="1" aria-label="水下鼻隠しのオフセット">
             <span class="unit">mm</span>
           </div>
         </div>
@@ -210,7 +212,8 @@
           <div class="offset-grid">
             <select id="tileHanaKRef" aria-label="水上鼻隠しの基準"><option value="noji">合板天端</option><option value="taruki">垂木天端</option></select>
             <select id="tileHanaKDir" aria-label="水上鼻隠しの方向"><option value="vertical">鉛直</option><option value="perpendicular">勾配に垂直</option></select>
-            <input type="number" id="tileHanaKOffset" value="0" step="1" aria-label="水上鼻隠しのオフセット">
+            <select id="tileHanaKSide" aria-label="水上鼻隠しの基準面"><option value="inner" selected>内寸</option><option value="outer">外寸</option></select>
+            <input type="number" id="tileHanaKOffset" value="40" step="1" aria-label="水上鼻隠しのオフセット">
             <span class="unit">mm</span>
           </div>
         </div>
@@ -329,8 +332,8 @@ const FIELDS = {
   total:'num', ovShimo:'num', ovKami:'num', hafu:'text', hanaShimo:'text', hanaKami:'text',
   clearance:'num',
   tileHafuRef:'text', tileHafuDir:'text', tileHafuOffset:'num',
-  tileHanaSRef:'text', tileHanaSDir:'text', tileHanaSOffset:'num',
-  tileHanaKRef:'text', tileHanaKDir:'text', tileHanaKOffset:'num',
+  tileHanaSRef:'text', tileHanaSDir:'text', tileHanaSSide:'text', tileHanaSOffset:'num',
+  tileHanaKRef:'text', tileHanaKDir:'text', tileHanaKSide:'text', tileHanaKOffset:'num',
   dHana:'bool', dThick:'bool', dMoya:'bool', dShort:'bool', dClear:'bool', dHatch:'bool',
   d225:'bool', dMoyaW:'bool', dCenter:'bool',
   dHafuW:'bool', dTaruki:'bool', dNoji:'bool', dOverS:'bool', dOverK:'bool', dSlope:'bool',
@@ -347,9 +350,9 @@ const DEFAULTS = {
   moyaSize:105, notchRef:22.5,
   total:500, ovShimo:82, ovKami:58, hafu:'on', hanaShimo:'tatsu', hanaKami:'tatsu',
   clearance:0,
-  tileHafuRef:'noji', tileHafuDir:'vertical', tileHafuOffset:0,
-  tileHanaSRef:'noji', tileHanaSDir:'vertical', tileHanaSOffset:0,
-  tileHanaKRef:'noji', tileHanaKDir:'vertical', tileHanaKOffset:0,
+  tileHafuRef:'noji', tileHafuDir:'perpendicular', tileHafuOffset:20,
+  tileHanaSRef:'noji', tileHanaSDir:'vertical', tileHanaSSide:'inner', tileHanaSOffset:40,
+  tileHanaKRef:'noji', tileHanaKDir:'vertical', tileHanaKSide:'inner', tileHanaKOffset:40,
   dHana:true, dThick:true, dMoya:true, dShort:true, dClear:true, dHatch:true,
   d225:true, dMoyaW:true, dCenter:true,
   dHafuW:true, dTaruki:true, dNoji:true, dOverS:true, dOverK:true, dSlope:true,
@@ -449,16 +452,17 @@ function geometry(p){
   // 瓦では、各部材の天端を基準線から鉛直または勾配直角にずらす。
   // 通常では全て垂木天端・オフセット0として、従来の位置を保つ。
   const isTile = p.roofMode==='tile';
-  const topOffset = (ref, dir, value)=>{
+  const topOffset = (ref, dir, side, value)=>{
     const base = (isTile && ref==='noji') ? lnC : lnD;
     const d = isTile ? num(value,0) : 0;
     const shift = (isTile && dir==='perpendicular') ? d/cos : d;
-    return {ref:(isTile && ref==='noji')?'noji':'taruki', dir:(isTile && dir==='perpendicular')?'perpendicular':'vertical', value:d,
+    return {ref:(isTile && ref==='noji')?'noji':'taruki', dir:(isTile && dir==='perpendicular')?'perpendicular':'vertical',
+            side:(isTile && side==='outer')?'outer':'inner', value:d,
             line:x=>base(x)-shift};
   };
-  const offHafu = topOffset(p.tileHafuRef, p.tileHafuDir, p.tileHafuOffset);
-  const offS = topOffset(p.tileHanaSRef, p.tileHanaSDir, p.tileHanaSOffset);
-  const offK = topOffset(p.tileHanaKRef, p.tileHanaKDir, p.tileHanaKOffset);
+  const offHafu = topOffset(p.tileHafuRef, p.tileHafuDir, 'inner', p.tileHafuOffset);
+  const offS = topOffset(p.tileHanaSRef, p.tileHanaSDir, p.tileHanaSSide, p.tileHanaSOffset);
+  const offK = topOffset(p.tileHanaKRef, p.tileHanaKDir, p.tileHanaKSide, p.tileHanaKOffset);
   const lnHafu = offHafu.line;
   const lnA = x => lnHafu(x) + wHafu/cos;   // 破風板下端
 
@@ -497,7 +501,7 @@ function geometry(p){
   //   innerX＝内面（＝垂木の木口）が垂木天と交わる x。合板の出はここが基準。
   function makeBoard(mode, xOuter, into, face, top){  // into=+1:内側が水上向き(左端) / -1:(右端)
     if(mode==='none')
-      return {mode, poly:null, innerX:xOuter, aX:xOuter, bX:xOuter, face:0};
+      return {mode, poly:null, innerX:xOuter, outerX:xOuter, aX:xOuter, bX:xOuter, face:0};
     if(mode==='cut1' || mode==='cut2'){
       const xi=xOuter+into*tHana, x0=Math.min(xOuter,xi), x1=Math.max(xOuter,xi);
       const dif = tHana*tan;                     // 厚み分の勾配落ち＝C
@@ -517,7 +521,7 @@ function geometry(p){
               gap  :[[xOuter,top.line(x0)],[xOuter,top.line(x1)]],          // 差＝C
               outer:[[xOuter,top.line(x1)],[xOuter,yb]],
               thick:[[x0,yb],[x1,yb]],          // 厚みは水平に測る（勾配はつかない）
-              outDir:[0,1], innerX:xi,
+              outDir:[0,1], innerX:xi, outerX:xOuter,
               face, faceShort:shortF,
               aX:x0, bX:(into>0?x1:x0)};
     }
@@ -527,7 +531,7 @@ function geometry(p){
               diag:[[x0,y0],[x1,y0+face]],
               outer:[[xOuter,top.line(x0)],[xOuter,y0+face]],   // 成を測る外面（鉛直）
               thick:[[x0,y0+face],[x1,y0+face]],                // 鼻隠し厚（水平）
-              outDir:[0,1], innerX:xi,
+              outDir:[0,1], innerX:xi, outerX:xOuter,
               face, aX:x1, bX:(into>0?x1:x0)};
     }
     const O=[xOuter,top.line(xOuter)];                            // 外面×鼻隠し天端
@@ -536,7 +540,7 @@ function geometry(p){
     const Ob=[O[0]+dn[0],O[1]+dn[1]], Ib=[I[0]+dn[0],I[1]+dn[1]];
     const ul = (into>0)?O:I, lr = (into>0)?Ib:Ob;                 // 左上→右下の対角
     return {mode, poly:[O,I,Ib,Ob], diag:[ul,lr],
-            outer:[O,Ob], thick:[Ob,Ib], outDir:[sin,cos], innerX:I[0], face,
+            outer:[O,Ob], thick:[Ob,Ib], outDir:[sin,cos], innerX:I[0], outerX:xOuter, face,
             aX:xOuter+wHafu*sin, bX:I[0]+hTaruki*sin};
   }
   const bS = makeBoard(modeS, 0,      +1, faceS, offS);
@@ -651,7 +655,7 @@ function buildContent(p, g){
   if(g.hasHafu) [g.bS.aX,g.bK.aX].forEach(x=>{ xs.push(x); ys.push(g.lnA(x)); });
   // 瓦の点線ガイドと天端位置も縮尺計算へ含め、用紙端からはみ出さないようにする。
   if(g.isTile){
-    [g.offsets.hafu.line, g.offsets.kami.line].forEach(lineY=>{
+    [g.offsets.hafu.line, g.offsets.shimo.line, g.offsets.kami.line].forEach(lineY=>{
       [0, g.totalW].forEach(x=>{ xs.push(x); ys.push(lineY(x)); });
     });
   }
@@ -775,14 +779,23 @@ function buildContent(p, g){
   if(g.bS.poly) drawBoard(g.bS);
   if(g.bK.poly) drawBoard(g.bK);
 
-  // 瓦の位置基準ライン。鼻隠しは水上側の指定ラインを代表として示す。
+  // 瓦の位置基準ライン。水下・水上の条件が一致するときだけ鼻隠しラインを共通化する。
   if(g.isTile){
     const guide = (label, lineY, x0, x1, tx, ty, rotate)=>{
       line(PX(x0),PY(lineY(x0)),PX(x1),PY(lineY(x1)),W_DIM,'2.2 1.5');
       text(PX(tx), PY(lineY(tx))+ty, `▼${label}`, F_SML, 'middle', rotate ? -g.th*180/Math.PI : 0);
     };
-    if(g.bK.poly) guide('鼻隠しライン', g.offsets.kami.line, g.totalW*0.14, g.totalW*0.94, g.totalW*0.72, -F_SML*2.2);
-    if(g.hasHafu) guide('破風板ライン', g.lnHafu, g.totalW*0.12, g.totalW*0.90, g.totalW*0.34, -F_SML*1.4, true);
+    const sameHanaOffset = ['ref','dir','side','value'].every(k=>g.offsets.shimo[k]===g.offsets.kami[k]);
+    const splitHanaGuide = g.bS.poly && g.bK.poly && !sameHanaOffset;
+    if(g.bS.poly && g.bK.poly && sameHanaOffset){
+      guide('鼻隠しライン', g.offsets.shimo.line, g.totalW*0.14, g.totalW*0.94, g.totalW*0.72, -F_SML*2.2);
+    }else{
+      if(g.bK.poly) guide('鼻隠し(水上)ライン', g.offsets.kami.line, g.totalW*0.14, g.totalW*0.94, g.totalW*0.77, -F_SML*2.2);
+      if(g.bS.poly) guide('鼻隠し(水下)ライン', g.offsets.shimo.line, g.totalW*0.06, g.totalW*0.86, g.totalW*0.20, -F_SML*2.2);
+    }
+    // 水下・水上を分けて表示する場合は、破風板注記を右側へ寄せて文字が重ならないようにする。
+    if(g.hasHafu) guide('破風板ライン', g.lnHafu, g.totalW*0.12, g.totalW*0.90,
+                         g.totalW*(splitHanaGuide ? 0.64 : 0.34), -F_SML*1.4, true);
   }
 
   /* ---- 母屋（断面） ---- */
@@ -827,8 +840,8 @@ function buildContent(p, g){
       dim(A[0],A[1],B[0],B[1],off,signed(item.value));
     };
     if(g.hasHafu) drawOffset(g.offsets.hafu, g.totalW*0.62, -OFF*1.25);
-    if(g.bS.poly) drawOffset(g.offsets.shimo, g.bS.innerX, -SIDE*1.1);
-    if(g.bK.poly) drawOffset(g.offsets.kami, g.totalW, SIDE*2.05);
+    if(g.bS.poly) drawOffset(g.offsets.shimo, g.offsets.shimo.side==='outer' ? g.bS.outerX : g.bS.innerX, -SIDE*1.1);
+    if(g.bK.poly) drawOffset(g.offsets.kami, g.offsets.kami.side==='outer' ? g.bK.outerX : g.bK.innerX, SIDE*2.05);
   }
   // 母屋まわり
   if(p.dMoya  && g.hasHafu) dim(PX(M.xL),PY(M.yT), PX(M.xL),PY(g.lnCut(M.xL)),  OFF, fmt(g.dimMoya));
