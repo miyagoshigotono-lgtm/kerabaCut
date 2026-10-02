@@ -696,6 +696,9 @@ function buildContent(p, g){
     o.push(`<line x1="${N(x1)}" y1="${N(y1)}" x2="${N(x2)}" y2="${N(y2)}" stroke="#000" stroke-width="${w||W_THN}"`
       + (dash?` stroke-dasharray="${dash}"`:``) + ` stroke-linecap="round"/>`);
   }
+  function dot(x,y,r){
+    o.push(`<circle cx="${N(x)}" cy="${N(y)}" r="${N(r)}" fill="#000"/>`);
+  }
   function poly(pts,w,fill){
     o.push(`<polygon points="${pts.map(q=>N(q[0])+','+N(q[1])).join(' ')}" fill="${fill||'none'}" stroke="${w?'#000':'none'}" stroke-width="${w||0}"/>`);
   }
@@ -723,21 +726,9 @@ function buildContent(p, g){
     }
     line(a2[0],a2[1],b2[0],b2[1],W_DIM);       // 寸法線
 
-    const AL=3.2*LS, AW=0.85*LS;
-    const arrow=(px,py,sx,sy)=>{
-      const tx=px+sx*AL, ty=py+sy*AL;
-      poly([[px,py],[tx-sy*AW,ty+sx*AW],[tx+sy*AW,ty-sx*AW]],0,'#000');
-    };
-    const outside = len < AL*2.6;
-    if(outside){                               // 短いときは矢印を外へ逃がす
-      arrow(a2[0],a2[1],-ux,-uy);
-      arrow(b2[0],b2[1], ux, uy);
-      line(a2[0]-ux*(AL+1.5),a2[1]-uy*(AL+1.5),a2[0],a2[1],W_DIM);
-      line(b2[0]+ux*(AL+1.5),b2[1]+uy*(AL+1.5),b2[0],b2[1],W_DIM);
-    }else{
-      arrow(a2[0],a2[1], ux, uy);
-      arrow(b2[0],b2[1],-ux,-uy);
-    }
+    // 寸法の端部は矢印ではなく黒丸で統一する。短い寸法でも外へ逃がす必要がない。
+    dot(a2[0],a2[1],1.15*LS);
+    dot(b2[0],b2[1],1.15*LS);
 
     // 文字（用紙上で上下逆さにならないよう、用紙の回転量ROTを加味して正規化）
     let ang = Math.atan2(uy,ux)*180/Math.PI;
@@ -781,9 +772,10 @@ function buildContent(p, g){
 
   // 瓦の位置基準ライン。水下・水上の条件が一致するときだけ鼻隠しラインを共通化する。
   if(g.isTile){
-    const guide = (label, lineY, x0, x1, tx, ty, rotate)=>{
+    const guide = (label, lineY, x0, x1, tx, ty)=>{
       line(PX(x0),PY(lineY(x0)),PX(x1),PY(lineY(x1)),W_DIM,'2.2 1.5');
-      text(PX(tx), PY(lineY(tx))+ty, `▼${label}`, F_SML, 'middle', rotate ? -g.th*180/Math.PI : 0);
+      // 鼻隠しのオフセット方向に関わらず、基準ラインは屋根勾配と平行に表す。
+      text(PX(tx), PY(lineY(tx))+ty, `▼${label}`, F_SML, 'middle', -g.th*180/Math.PI);
     };
     const sameHanaOffset = ['ref','dir','side','value'].every(k=>g.offsets.shimo[k]===g.offsets.kami[k]);
     const splitHanaGuide = g.bS.poly && g.bK.poly && !sameHanaOffset;
@@ -795,7 +787,7 @@ function buildContent(p, g){
     }
     // 水下・水上を分けて表示する場合は、破風板注記を右側へ寄せて文字が重ならないようにする。
     if(g.hasHafu) guide('破風板ライン', g.lnHafu, g.totalW*0.12, g.totalW*0.90,
-                         g.totalW*(splitHanaGuide ? 0.64 : 0.34), -F_SML*1.4, true);
+                         g.totalW*(splitHanaGuide ? 0.64 : 0.34), -F_SML*1.4);
   }
 
   /* ---- 母屋（断面） ---- */
