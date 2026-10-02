@@ -748,7 +748,8 @@ function buildContent(p, g){
   const seg = (a,b,w)=>{ const A=P2(a),B=P2(b); line(A[0],A[1],B[0],B[1],w); };
   seg(g.endLC,g.endRC,W_OUT);                                                  // 野地板天
   // 垂木天は合板の出がマイナスでも鼻隠しまで通す（合板下端と同じライン）
-  const dL = Math.min(g.endLD[0], 0), dR = Math.max(g.endRD[0], g.totalW);
+  const dL = g.isTile ? g.bS.innerX : Math.min(g.endLD[0], 0);
+  const dR = g.isTile ? g.bK.innerX : Math.max(g.endRD[0], g.totalW);
   line(PX(dL),PY(g.lnD(dL)), PX(dR),PY(g.lnD(dR)), W_OUT);                    // 野地板下端＝垂木天
   if(g.capS) seg(g.endLD,g.endLC,W_OUT);                                       // 水下小口（カネ＝合板に直角）
   if(g.capK) seg(g.endRD,g.endRC,W_OUT);                                       // 水上小口（カネ＝合板に直角）
@@ -776,12 +777,12 @@ function buildContent(p, g){
 
   // 瓦の位置基準ライン。鼻隠しは水上側の指定ラインを代表として示す。
   if(g.isTile){
-    const guide = (label, lineY, x0, x1, tx, ty)=>{
+    const guide = (label, lineY, x0, x1, tx, ty, rotate)=>{
       line(PX(x0),PY(lineY(x0)),PX(x1),PY(lineY(x1)),W_DIM,'2.2 1.5');
-      text(PX(tx), PY(lineY(tx))+ty, `▼${label}`, F_SML, 'middle');
+      text(PX(tx), PY(lineY(tx))+ty, `▼${label}`, F_SML, 'middle', rotate ? -g.th*180/Math.PI : 0);
     };
     if(g.bK.poly) guide('鼻隠しライン', g.offsets.kami.line, g.totalW*0.14, g.totalW*0.94, g.totalW*0.72, -F_SML*2.2);
-    if(g.hasHafu) guide('破風板ライン', g.lnHafu, g.totalW*0.12, g.totalW*0.90, g.totalW*0.34, -F_SML*1.4);
+    if(g.hasHafu) guide('破風板ライン', g.lnHafu, g.totalW*0.12, g.totalW*0.90, g.totalW*0.34, -F_SML*1.4, true);
   }
 
   /* ---- 母屋（断面） ---- */
@@ -815,7 +816,7 @@ function buildContent(p, g){
   }
   // 瓦：各部材の天端オフセット。基準線と方向が図面だけで分かるように明記する。
   if(g.isTile){
-    const signed = v => (v>0?'+':'') + fmt(v);
+    const signed = v => fmt(v);
     const drawOffset = (item, x, off)=>{
       const refLine = item.ref==='noji' ? g.lnC : g.lnD;
       const a=[x,refLine(x)];
@@ -826,7 +827,7 @@ function buildContent(p, g){
       dim(A[0],A[1],B[0],B[1],off,signed(item.value));
     };
     if(g.hasHafu) drawOffset(g.offsets.hafu, g.totalW*0.62, -OFF*1.25);
-    if(g.bS.poly) drawOffset(g.offsets.shimo, 0, -SIDE*2.05);
+    if(g.bS.poly) drawOffset(g.offsets.shimo, g.bS.innerX, -SIDE*1.1);
     if(g.bK.poly) drawOffset(g.offsets.kami, g.totalW, SIDE*2.05);
   }
   // 母屋まわり
