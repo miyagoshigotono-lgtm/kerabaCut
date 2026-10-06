@@ -83,7 +83,10 @@
   .offset-grid .unit{width:auto;flex:none;font-size:15px}
   .tile-only{display:none}
   body.tile-mode .tile-only{display:block}
+  body.tile-mode .row.tile-only{display:flex}
   body.tile-mode .normal-only{display:none}
+  .tile-inline{display:none}
+  body.tile-mode .tile-inline{display:inline-flex}
 
   button{
     font-family:inherit;font-size:16px;padding:8px 13px;border-radius:6px;cursor:pointer;
@@ -181,9 +184,11 @@
         <div class="row"><label>合板 厚</label><input type="number" id="tNoji" value="12" step="0.5"><span class="unit">mm</span></div>
         <div class="row"><label>垂木 成</label><input type="number" id="hTaruki" value="60" step="1"><span class="unit">mm</span></div>
         <div class="row"><label>破風板 厚</label><input type="number" id="tHafu" value="30" step="1"><span class="unit">mm</span></div>
-        <div class="row"><label>破風板 成</label><input type="number" id="wHafu" value="150" step="1"><span class="unit">mm</span></div>
+        <div class="row"><label>破風板 成</label><input type="number" id="wHafu" value="150" step="1"><button class="mini tile-inline" type="button" id="btnCalcHafu">計算</button><span class="unit">mm</span></div>
         <div class="row"><label>鼻隠し 厚</label><input type="number" id="tHana" value="30" step="1"><span class="unit">mm</span></div>
         <div class="row normal-only"><label>鼻隠し 成</label><input type="number" id="hHanaOrder" value="" placeholder="自動" step="0.1"><button class="mini" type="button" id="btnCalcHana">計算</button><span class="unit">mm</span></div>
+        <div class="row tile-only"><label>水下鼻隠し 成</label><input type="number" id="tileHanaSOrder" value="175" step="1"><span class="unit">mm</span></div>
+        <input type="checkbox" id="tileHafuAuto" checked hidden aria-hidden="true">
       </fieldset>
 
       <fieldset class="tile-only" id="tileOffsets">
@@ -328,6 +333,7 @@
 const FIELDS = {
   name:'text', pitch:'num', material:'text', client:'text',
   tNoji:'num', hTaruki:'num', tHafu:'num', wHafu:'num', tHana:'num', hHanaOrder:'num',
+  tileHanaSOrder:'num', tileHafuAuto:'bool',
   moyaSize:'num', notchRef:'num',
   total:'num', ovShimo:'num', ovKami:'num', hafu:'text', hanaShimo:'text', hanaKami:'text',
   clearance:'num',
@@ -347,6 +353,7 @@ const FIELDS = {
 const DEFAULTS = {
   name:'', pitch:1.0, material:'ガルバリウム', client:'',
   tNoji:12, hTaruki:60, tHafu:30, wHafu:150, tHana:30, hHanaOrder:null,
+  tileHanaSOrder:175, tileHafuAuto:true,
   moyaSize:105, notchRef:22.5,
   total:500, ovShimo:82, ovKami:58, hafu:'on', hanaShimo:'tatsu', hanaKami:'tatsu',
   clearance:0,
@@ -409,6 +416,10 @@ function loadSavedForm(mode){
       saved = Object.assign({}, saved||{}, {ovShimo:0, ovKami:0});
       localStorage.setItem(TILE_PLYWOOD_DEFAULTS_KEY,'1');
     }
+    // 既存の瓦入力には、水下鼻隠し成175 mmを基準とする破風板自動計算を追加する。
+    if(mode==='tile' && (!saved || !Object.prototype.hasOwnProperty.call(saved, 'tileHanaSOrder'))){
+      saved = Object.assign({}, saved||{}, {tileHanaSOrder:175, tileHafuAuto:true});
+    }
   }catch(e){}
   return Object.assign({}, DEFAULTS, saved||{});
 }
@@ -431,7 +442,7 @@ function geometry(p){
   const tNoji   = Math.max(0, num(p.tNoji,12));
   const hTaruki = Math.max(1, num(p.hTaruki,60));
   const tHafu   = Math.max(1, num(p.tHafu,27));
-  const wHafu   = Math.max(10, num(p.wHafu,145));
+  let wHafu     = Math.max(10, num(p.wHafu,145));
   const tHana   = Math.max(1, num(p.tHana,27));
 
   const hasHafu = (p.hafu !== 'none');     // 破風板を付けるか
@@ -452,29 +463,47 @@ function geometry(p){
   // 瓦では、各部材の天端を基準線から鉛直または勾配直角にずらす。
   // 通常では全て垂木天端・オフセット0として、従来の位置を保つ。
   const isTile = p.roofMode==='tile';
-  const topOffset = (ref, dir, side, value)=>{
+  const topOffset = (ref, dir, side, value, extraVerticalShift=0)=>{
     const base = (isTile && ref==='noji') ? lnC : lnD;
     const d = isTile ? num(value,0) : 0;
     const shift = (isTile && dir==='perpendicular') ? d/cos : d;
     return {ref:(isTile && ref==='noji')?'noji':'taruki', dir:(isTile && dir==='perpendicular')?'perpendicular':'vertical',
             side:(isTile && side==='outer')?'outer':'inner', value:d,
-            line:x=>base(x)-shift};
+            line:x=>base(x)-shift-extraVerticalShift};
   };
   const offHafu = topOffset(p.tileHafuRef, p.tileHafuDir, 'inner', p.tileHafuOffset);
-  const offS = topOffset(p.tileHanaSRef, p.tileHanaSDir, p.tileHanaSSide, p.tileHanaSOffset);
+  // タツの水下鼻隠しは、内寸・鉛直のとき内側天端から垂直寸法を取る。
+  // 上端が水平のため、内側までの板厚ぶんの勾配落ちを補正する。
+  const shimoInnerVerticalAdjust =
+    (isTile && modeS==='tatsu' && p.tileHanaSDir==='vertical' && p.tileHanaSSide!=='outer')
+      ? tHana*tan : 0;
+  const offS = topOffset(p.tileHanaSRef, p.tileHanaSDir, p.tileHanaSSide, p.tileHanaSOffset,
+                         shimoInnerVerticalAdjust);
   const offK = topOffset(p.tileHanaKRef, p.tileHanaKDir, p.tileHanaKSide, p.tileHanaKOffset);
   const lnHafu = offHafu.line;
+
+  // 鼻隠しの下端を破風板下端へ揃えたときの成を返す。
+  // 瓦の破風板自動計算では、水下鼻隠し成を175 mm（初期値）へ合わせるために使う。
+  function autoFaceForHafu(mode, top, xOuter, into, hafuFace){
+    const xInner = xOuter + into*tHana;
+    const x0 = Math.min(xOuter, xInner), x1 = Math.max(xOuter, xInner);
+    const lnAAt = x => lnHafu(x) + hafuFace/cos;
+    if(mode==='kane') return (lnAAt(0)-top.line(0))*cos;
+    if(mode==='cut2') return lnAAt(x0)-top.line(x0)+tHana*tan;
+    if(mode==='cut1') return lnAAt(x0)-top.line(x1);
+    return lnAAt(x1)-top.line(x0);           // タツ
+  }
+  if(isTile && p.tileHafuAuto && modeS!=='none'){
+    const target = Math.max(10, num(p.tileHanaSOrder,175));
+    const atZero = autoFaceForHafu(modeS, offS, 0, +1, 0);
+    const atHundred = autoFaceForHafu(modeS, offS, 0, +1, 100);
+    const unit = (atHundred-atZero)/100;
+    if(Math.abs(unit)>0.0001) wHafu = Math.max(10, (target-atZero)/unit);
+  }
   const lnA = x => lnHafu(x) + wHafu/cos;   // 破風板下端
 
   // 各鼻隠しの下端は破風板下端へ揃え、天端位置から成を自動計算する。
-  function autoFace(mode, top, xOuter, into){
-    const xInner = xOuter + into*tHana;
-    const x0 = Math.min(xOuter, xInner), x1 = Math.max(xOuter, xInner);
-    if(mode==='kane') return (lnA(0)-top.line(0))*cos;
-    if(mode==='cut2') return lnA(x0)-top.line(x0)+tHana*tan;
-    if(mode==='cut1') return lnA(x0)-top.line(x1);
-    return lnA(x1)-top.line(x0);             // タツ
-  }
+  const autoFace = (mode, top, xOuter, into) => autoFaceForHafu(mode, top, xOuter, into, wHafu);
   const autoS = autoFace(modeS, offS, 0, +1);
   const autoK = autoFace(modeK, offK, totalW, -1);
   const hTatsu = autoS;
@@ -775,14 +804,14 @@ function buildContent(p, g){
     const guide = (label, lineY, x0, x1, tx)=>{
       line(PX(x0),PY(lineY(x0)),PX(x1),PY(lineY(x1)),W_DIM,'2.2 1.5');
       // ▼は実際の三角形で描き、先端を必ず対応する点線へ接触させる。
-      // 文字は勾配に沿わせ、横方向の位置だけを振り分けて重なりを避ける。
+      // 文字は勾配に沿わせ、下端を▼先端へ揃えて横方向だけを振り分ける。
       const tip=[PX(tx),PY(lineY(tx))];
       const ux=g.cos, uy=-g.sin;
       const nx=-g.sin, ny=-g.cos;              // 点線より上側への法線
       const triH=F_SML*1.05, triW=F_SML*0.82;
       const base=[tip[0]+nx*triH,tip[1]+ny*triH];
       poly([tip,[base[0]-ux*triW,base[1]-uy*triW],[base[0]+ux*triW,base[1]+uy*triW]],0,'#000');
-      text(base[0]+ux*(triW+F_SML*0.28), base[1]+uy*(triW+F_SML*0.28),
+      text(tip[0]+ux*(triW+F_SML*0.28), tip[1]+uy*(triW+F_SML*0.28),
            label, F_SML, 'start', -g.th*180/Math.PI);
     };
     const sameHanaOffset = ['ref','dir','side','value'].every(k=>g.offsets.shimo[k]===g.offsets.kami[k]);
@@ -1069,6 +1098,8 @@ function updateEnabled(p){
   off('clearance', noHafu);          // 破風板が無ければケラバカットも無い
 
   if(p.roofMode==='tile'){
+    off('tileHanaSOrder', p.hanaShimo==='none');
+    $('btnCalcHafu').disabled = noHafu || p.hanaShimo==='none';
     [['hafu', noHafu], ['hanaShimo', p.hanaShimo==='none'], ['hanaKami', p.hanaKami==='none']].forEach(([part, disabled])=>{
       document.querySelectorAll(`[data-offset-part="${part}"] select, [data-offset-part="${part}"] input`).forEach(el=>el.disabled=disabled);
       const group = document.querySelector(`[data-offset-part="${part}"]`);
@@ -1080,6 +1111,8 @@ function updateEnabled(p){
 function refresh(){
   const p = getParams();
   const g = geometry(p);
+  // 瓦の自動計算中は、実際に作図へ使った破風板成を数値欄にも戻す。
+  if(p.roofMode==='tile' && p.tileHafuAuto) $('wHafu').value = Math.round(g.wHafu*10)/10;
   updateEnabled(p);
   $('sheet').innerHTML = renderSVG(p);
   $('sheet').className = 'sheet ' + (p.orient==='portrait' ? 'port' : 'land');
@@ -1150,6 +1183,16 @@ $('form').addEventListener('input', refresh);
 $('form').addEventListener('change', refresh);
 $('zoom').addEventListener('change', applyZoom);
 window.addEventListener('resize', applyZoom);
+
+// 瓦の破風板成は、計算を押すと水下鼻隠し成から自動決定する。
+// 数値を直接編集した場合は、その値を意図した手入力として優先する。
+$('wHafu').addEventListener('input', ()=>{
+  if(activeMode==='tile') $('tileHafuAuto').checked = false;
+}, true);
+$('btnCalcHafu').onclick = ()=>{
+  $('tileHafuAuto').checked = true;
+  refresh();
+};
 
 // 用紙の向きは印刷するものだけを宣言する。
 // 横と縦の両方を常に書いておくと、1枚しか出さないときでも Chrome が
