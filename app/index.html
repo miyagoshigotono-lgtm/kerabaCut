@@ -607,8 +607,9 @@ function geometry(p){
   const dimMoya = lnCut(moya.xL) - moya.yT;
   const dimMoyaShort = lnCut(moya.xR) - moya.yT;
 
-  // 注記に出す発注寸法も pick と同じ規則で。カネ・勾配カットは手入力に引きずられない
-  const ord = (m, face) => (!isTile && hOrder!==null && m==='tatsu') ? hOrder : Math.round(face);
+  // 瓦の鼻隠し発注寸法は小数を切り上げ、部材が不足しないようにする。
+  const ord = (m, face) => (!isTile && hOrder!==null && m==='tatsu')
+    ? hOrder : (isTile ? Math.ceil(face-1e-9) : Math.round(face));
   // 瓦の自動計算で生じた小数は、板が不足しないよう発注寸法を必ず切り上げる。
   const hafuOrderW = (isTile && p.tileHafuAuto) ? Math.ceil(wHafu-1e-9) : wHafu;
   return {pitch,tan,th,cos,sin,tNoji,hTaruki,tHafu,wHafu,hafuOrderW,tHana,hHana,hTatsu,hasHafu,
@@ -964,12 +965,14 @@ function orderRows(p, g){
   // 発注書は整数のみ。C と D を丸めてから B = D + C とし、必ず合計が一致するようにする。
   const rows = {p1:[], p2:[], p3:[]};
   const RI = v => Math.round(v);
+  // 瓦は、鼻隠しの小数成も破風板と同じく切り上げて不足を防ぐ。
+  const orderInt = v => g.isTile ? Math.ceil(v-1e-9) : RI(v);
   const putCut = (sec, sp, thick, seiShort, len, qty)=>{
-    const A = RI(thick), C = RI(thick*g.tan), D = RI(seiShort);
+    const A = RI(thick), C = orderInt(thick*g.tan), D = orderInt(seiShort);
     rows[sec].push({sp, A, B:D+C, C, D, len, qty});
   };
   const putFlat = (sp, thick, sei, len, qty)=>
-    rows.p3.push({sp, A:RI(thick), B:RI(sei), C:'', D:'', len, qty});
+    rows.p3.push({sp, A:RI(thick), B:orderInt(sei), C:'', D:'', len, qty});
 
   if(g.hasHafu && p.ordHafu!=='off'){
     const sec = p.ordHafu || 'p3';
