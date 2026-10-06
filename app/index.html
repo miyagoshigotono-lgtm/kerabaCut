@@ -609,7 +609,9 @@ function geometry(p){
 
   // 注記に出す発注寸法も pick と同じ規則で。カネ・勾配カットは手入力に引きずられない
   const ord = (m, face) => (!isTile && hOrder!==null && m==='tatsu') ? hOrder : Math.round(face);
-  return {pitch,tan,th,cos,sin,tNoji,hTaruki,tHafu,wHafu,tHana,hHana,hTatsu,hasHafu,
+  // 瓦の自動計算で生じた小数は、板が不足しないよう発注寸法を必ず切り上げる。
+  const hafuOrderW = (isTile && p.tileHafuAuto) ? Math.ceil(wHafu-1e-9) : wHafu;
+  return {pitch,tan,th,cos,sin,tNoji,hTaruki,tHafu,wHafu,hafuOrderW,tHana,hHana,hTatsu,hasHafu,
           moyaSize,notchRef,moya,totalW,L,ovS,ovK,xEndL,xEndR,endLD,endLC,endRD,endRC,
           modeS,modeK,bS,bK,hS,hK,clearance,capS,capK,
           lnA,lnB,lnC,lnD,lnHafu,lnCut,dimMoya,dimMoyaShort,isTile,
@@ -663,7 +665,7 @@ function buildContent(p, g){
   const yMat   = yTitle + F_MAT*1.4;
   const headB  = (p.material ? yMat : yTitle) + 6;
   const noteLines = [];
-  if(g.hasHafu) noteLines.push(`破風板：${fmt(g.tHafu)}ｘ${fmt(g.wHafu)}`);
+  if(g.hasHafu) noteLines.push(`破風板：${fmt(g.tHafu)}ｘ${fmt(g.hafuOrderW)}`);
   const okS = g.modeS!=='none', okK = g.modeK!=='none';
   if(okS && okK && g.hHanaOrderS===g.hHanaOrderK)
     noteLines.push(`鼻隠し：${fmt(g.tHana)}ｘ${fmt(g.hHanaOrderS)}`);
@@ -971,8 +973,8 @@ function orderRows(p, g){
 
   if(g.hasHafu && p.ordHafu!=='off'){
     const sec = p.ordHafu || 'p3';
-    if(sec==='p3') putFlat(p.ordHafuSp, g.tHafu, g.wHafu, p.ordHafuLen, p.ordHafuQty);
-    else           putCut(sec, p.ordHafuSp, g.tHafu, g.wHafu, p.ordHafuLen, p.ordHafuQty);
+    if(sec==='p3') putFlat(p.ordHafuSp, g.tHafu, g.hafuOrderW, p.ordHafuLen, p.ordHafuQty);
+    else           putCut(sec, p.ordHafuSp, g.tHafu, g.hafuOrderW, p.ordHafuLen, p.ordHafuQty);
   }
   [[g.bS, p.ordHanaSSp, p.ordHanaSLen, p.ordHanaSQty],
    [g.bK, p.ordHanaKSp, p.ordHanaKLen, p.ordHanaKQty]].forEach(([b,sp,len,qty])=>{
