@@ -888,7 +888,9 @@ function buildContent(p, g){
       // 文字は勾配に沿わせ、下端を▼先端へ揃える。板の内側へクランプし、
       // オフセット寸法と重なるときだけ勾配方向へ段階的に退避する。
       const ux=g.cos, uy=-g.sin;
-      const triW=F_SML*.82;
+      // ▼は文字より目立ちすぎないよう、従来の約半分の大きさにする。
+      // 文字の基準点は従来どおり▼先端から取り、下端揃えを保つ。
+      const triW=F_SML*.41;
       const textStart=triW+F_SML*.28;
       const textRun=textStart+textWidth(label,F_SML);
       const margin=F_SML*.55/k;
@@ -914,7 +916,7 @@ function buildContent(p, g){
       }
       const tip=[PX(tx),PY(lineY(tx))];
       const nx=-g.sin, ny=-g.cos;              // 点線より上側への法線
-      const triH=F_SML*1.05;
+      const triH=F_SML*.525;
       const base=[tip[0]+nx*triH,tip[1]+ny*triH];
       poly([tip,[base[0]-ux*triW,base[1]-uy*triW],[base[0]+ux*triW,base[1]+uy*triW]],0,'#000');
       text(tip[0]+ux*textStart, tip[1]+uy*textStart,
