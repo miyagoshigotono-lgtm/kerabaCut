@@ -68,7 +68,15 @@
   .material-row > label:first-child{flex:0 0 168px}
   .row label.fixcheck{display:flex;align-items:center;gap:4px;flex:0 0 auto;font-size:14px;font-weight:700;color:var(--sub);white-space:nowrap}
   .fixcheck input{width:17px;height:17px;margin:0}
-  .calc-row button{min-width:88px}
+  .print-warning{display:none;flex:0 0 100%;padding:10px 12px;margin:0 0 4px;
+                 border:2px solid #c72323;border-radius:6px;background:#fff0f0;color:#9d1515;
+                 font-size:16px;font-weight:700;line-height:1.45}
+  .print-warning.is-visible{display:block}
+  .print-warning-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .print-warning ul{margin:7px 0 0;padding-left:1.3em}
+  .print-warning li+li{margin-top:4px}
+  .print-warning label{display:flex;align-items:center;gap:7px;cursor:pointer;white-space:nowrap}
+  .print-warning input{width:19px;height:19px;margin:0;accent-color:#a51919}
   textarea{resize:vertical;min-height:52px;line-height:1.5}
   .unit{flex:0 0 36px;font-size:16px;color:var(--ink)}
   .chk{display:flex;align-items:center;gap:8px;font-size:16px;color:var(--ink);padding:5px 0;
@@ -102,7 +110,8 @@
   button:hover{background:#f2f6fb;border-color:#b9c8da}
   button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
   button.primary:hover{background:var(--accent2)}
-  button.mini{padding:5px 10px;font-size:15px;flex:0 0 auto}
+  button.primary:disabled,button.primary:disabled:hover{
+    background:#eef1f5;color:#a3aebc;border-color:#e2e7ee;cursor:not-allowed}
 
   .side footer{border-top:1px solid var(--line);padding:13px 18px;display:flex;gap:8px;flex-wrap:wrap;background:#f8fafc}
   .side footer button{flex:1}
@@ -204,14 +213,12 @@
           <div class="row material-row"><label>破風板</label><div class="sizepair"><input type="number" id="normalHafuWidth" data-material-for="tHafu" step="1" aria-label="破風板の巾"><span class="times">ｘ</span><input type="number" id="normalHafuHeight" data-material-for="wHafu" step="1" aria-label="破風板の成"></div><label class="fixcheck"><input type="checkbox" data-fixed-for="fixHafu">固定</label></div>
           <div class="row material-row"><label>鼻隠し（水上）</label><div class="sizepair"><input type="number" id="normalHanaKamiWidth" data-material-for="tHana" step="1" aria-label="水上鼻隠しの巾"><span class="times">ｘ</span><input type="number" id="normalHanaKamiHeight" data-material-for="hHanaKamiOrder" step="0.1" aria-label="水上鼻隠しの成"></div><label class="fixcheck"><input type="checkbox" data-fixed-for="fixHanaKami">固定</label></div>
           <div class="row material-row"><label>鼻隠し（水下）</label><div class="sizepair"><input type="number" id="normalHanaShimoWidth" data-material-for="tHana" step="1" aria-label="水下鼻隠しの巾"><span class="times">ｘ</span><input type="number" id="normalHanaShimoHeight" data-material-for="hHanaShimoOrder" step="0.1" aria-label="水下鼻隠しの成"></div><label class="fixcheck"><input type="checkbox" data-fixed-for="fixHanaShimo">固定</label></div>
-          <div class="row calc-row"><label></label><button class="mini" type="button" id="btnCalcHana">計算</button></div>
         </div>
 
         <div class="tile-only">
           <div class="row material-row"><label>鼻隠し（水下）</label><div class="sizepair"><input type="number" id="tileHanaShimoWidth" data-material-for="tHana" step="1" aria-label="水下鼻隠しの巾"><span class="times">ｘ</span><input type="number" id="tileHanaShimoHeight" data-material-for="hHanaShimoOrder" step="1" aria-label="水下鼻隠しの成"></div><label class="fixcheck"><input type="checkbox" data-fixed-for="fixHanaShimo">固定</label></div>
           <div class="row material-row"><label>破風板</label><div class="sizepair"><input type="number" id="tileHafuWidth" data-material-for="tHafu" step="1" aria-label="破風板の巾"><span class="times">ｘ</span><input type="number" id="tileHafuHeight" data-material-for="wHafu" step="1" aria-label="破風板の成"></div><label class="fixcheck"><input type="checkbox" data-fixed-for="fixHafu">固定</label></div>
           <div class="row material-row"><label>鼻隠し（水上）</label><div class="sizepair"><input type="number" id="tileHanaKamiWidth" data-material-for="tHana" step="1" aria-label="水上鼻隠しの巾"><span class="times">ｘ</span><input type="number" id="tileHanaKamiHeight" data-material-for="hHanaKamiOrder" step="1" aria-label="水上鼻隠しの成"></div><label class="fixcheck"><input type="checkbox" data-fixed-for="fixHanaKami">固定</label></div>
-          <div class="row calc-row"><label></label><button class="mini" type="button" id="btnCalcHafu">計算</button></div>
         </div>
         <input type="checkbox" id="tileHafuAuto" checked hidden aria-hidden="true">
       </fieldset>
@@ -315,9 +322,13 @@
     </div>
 
     <footer>
-      <p class="hint" style="flex:0 0 100%;margin:0 0 4px">
-        印刷ダイアログで <b>送信先＝「PDFに保存」</b>、<b>用紙＝A4</b>、<b>余白＝なし（既定）</b> にすると原寸で出力できます。
-      </p>
+      <div id="printWarning" class="print-warning" role="alert" aria-live="polite">
+        <div class="print-warning-head">
+          <strong>⚠ 寸法の確認が必要です</strong>
+          <label><input type="checkbox" id="ackWarning">OK（確認して出力）</label>
+        </div>
+        <ul id="printWarningList"></ul>
+      </div>
       <button id="btnReset">既定値に戻す</button>
       <button id="btnPrintDwg">ケラバ図PDF</button>
       <button id="btnPrintOrd">発注書PDF</button>
@@ -398,6 +409,9 @@ const DEFAULTS = {
   ordHanaSSp:'', ordHanaSLen:'', ordHanaSQty:'',
   ordHanaKSp:'', ordHanaKLen:'', ordHanaKQty:''
 };
+const TILE_DEFAULTS = Object.assign({}, DEFAULTS, {
+  ovShimo:0, ovKami:0, fixHafu:false, fixHanaShimo:true, hHanaShimoOrder:175
+});
 
 const STORAGE_KEYS = {
   normal: 'keraba_last_normal_v1',
@@ -462,7 +476,7 @@ function loadSavedForm(mode){
            hHanaKamiOrder:legacyHana!=null?legacyHana:null});
     }
   }catch(e){}
-  return Object.assign({}, DEFAULTS, saved||{});
+  return Object.assign({}, mode==='tile'?TILE_DEFAULTS:DEFAULTS, saved||{});
 }
 
 function saveCurrentForm(){
@@ -1263,7 +1277,6 @@ function updateEnabled(p){
     const row = el.closest('.row');
     if(row) row.classList.toggle('off', disabled);
   };
-  const noHana = (p.hanaShimo==='none' && p.hanaKami==='none');
   off('normalHanaKamiWidth', p.hanaKami==='none');
   off('normalHanaKamiHeight', p.hanaKami==='none');
   off('normalHanaShimoWidth', p.hanaShimo==='none');
@@ -1272,8 +1285,6 @@ function updateEnabled(p){
   off('tileHanaKamiHeight', p.hanaKami==='none');
   off('tileHanaShimoWidth', p.hanaShimo==='none');
   off('tileHanaShimoHeight', p.hanaShimo==='none');
-  $('btnCalcHana').disabled = noHana;
-
   const noHafu = (p.hafu === 'none');
   off('normalHafuWidth', noHafu);
   off('normalHafuHeight', noHafu);
@@ -1282,13 +1293,51 @@ function updateEnabled(p){
   off('clearance', noHafu);          // 破風板が無ければケラバカットも無い
 
   if(p.roofMode==='tile'){
-    $('btnCalcHafu').disabled = noHafu || p.hanaShimo==='none';
     [['hafu', noHafu], ['hanaShimo', p.hanaShimo==='none'], ['hanaKami', p.hanaKami==='none']].forEach(([part, disabled])=>{
       document.querySelectorAll(`[data-offset-part="${part}"] select, [data-offset-part="${part}"] input`).forEach(el=>el.disabled=disabled);
       const group = document.querySelector(`[data-offset-part="${part}"]`);
       if(group) group.classList.toggle('off', disabled);
     });
   }
+  const unavailable={fixHafu:noHafu, fixHanaShimo:p.hanaShimo==='none', fixHanaKami:p.hanaKami==='none'};
+  document.querySelectorAll('[data-fixed-for]').forEach(el=>el.disabled=unavailable[el.dataset.fixedFor]);
+}
+
+// 固定された成が計算の基準になる。基準不足と、下端揃えから外れる固定値を知らせる。
+function getPrintWarnings(p,g){
+  const parts=[
+    {active:p.hafu!=='none', fixed:p.fixHafu, value:p.wHafu, name:'破風板'},
+    {active:p.hanaShimo!=='none', fixed:p.fixHanaShimo, value:p.hHanaShimoOrder, name:'水下鼻隠し', auto:g.faceAutoS},
+    {active:p.hanaKami!=='none', fixed:p.fixHanaKami, value:p.hHanaKamiOrder, name:'水上鼻隠し', auto:g.faceAutoK}
+  ];
+  const messages=[];
+  const active=parts.filter(part=>part.active);
+  const valid=part=>Number.isFinite(part.value) && part.value>=10;
+  if(!active.length) messages.push('破風板と鼻隠しがすべて「無し」です。部材の有無を確認してください。');
+  active.filter(part=>part.fixed && !valid(part)).forEach(part=>{
+    messages.push(`${part.name}の固定する成を10 mm以上で入力してください。`);
+  });
+  if(active.length && !active.some(part=>part.fixed && valid(part))){
+    messages.push('計算の基準がありません。破風板または鼻隠しの成を1つ以上「固定」にしてください。');
+  }
+  // 発注寸法の整数丸めで生じる差は許容し、1 mmを超える食い違いだけ警告する。
+  for(const part of active){
+    if(part.auto===undefined || !part.fixed || !valid(part)) continue;
+    if(Math.abs(part.value-part.auto)>1+1e-9){
+      messages.push(`${part.name}の固定成 ${fmt(part.value)} mm は、下端揃えの計算値 ${fmt(part.auto)} mm と一致しません。`);
+    }
+  }
+  return messages;
+}
+
+function updatePrintWarning(p,g){
+  const messages=getPrintWarnings(p,g);
+  const box=$('printWarning');
+  box.classList.toggle('is-visible', messages.length>0);
+  $('printWarningList').innerHTML=messages.map(message=>`<li>${esc(message)}</li>`).join('');
+  if(!messages.length) $('ackWarning').checked=false;
+  const blocked=messages.length>0 && !$('ackWarning').checked;
+  ['btnPrintDwg','btnPrintOrd','btnPrintBoth'].forEach(id=>$(id).disabled=blocked);
 }
 
 function refresh(){
@@ -1298,6 +1347,7 @@ function refresh(){
   if(!p.fixHafu) $('wHafu').value = Math.round(g.wHafu*10)/10;
   syncMaterialInputs(p,g);
   updateEnabled(p);
+  updatePrintWarning(p,g);
   $('sheet').innerHTML = renderSVG(p);
   $('sheet').className = 'sheet ' + (p.orient==='portrait' ? 'port' : 'land');
   $('sheetOrd').innerHTML = renderOrderSVG(p);
@@ -1392,18 +1442,20 @@ $('form').addEventListener('input', e=>{
   if(fixedFor){
     const canonical=$(fixedFor);
     if(canonical) canonical.checked=source.checked;
+    // 自動計算済みの表示値を固定する場合も、隠し入力へ値を確定させる。
+    if(source.checked){
+      const heightByFixed={fixHafu:'wHafu',fixHanaShimo:'hHanaShimoOrder',fixHanaKami:'hHanaKamiOrder'};
+      const height=source.closest('.material-row').querySelector(`[data-material-for="${heightByFixed[fixedFor]}"]`);
+      if(height) $(heightByFixed[fixedFor]).value=height.value;
+    }
   }
 });
 
-$('form').addEventListener('input', refresh);
-$('form').addEventListener('change', refresh);
+$('form').addEventListener('input', ()=>{ $('ackWarning').checked=false; refresh(); });
+$('form').addEventListener('change', ()=>{ $('ackWarning').checked=false; refresh(); });
+$('ackWarning').addEventListener('change', refresh);
 $('zoom').addEventListener('change', applyZoom);
 window.addEventListener('resize', applyZoom);
-
-// 固定されていない部材だけを再計算する。
-$('btnCalcHafu').onclick = ()=>{
-  refresh();
-};
 
 // 用紙の向きは印刷するものだけを宣言する。
 // 横と縦の両方を常に書いておくと、1枚しか出さないときでも Chrome が
@@ -1422,6 +1474,8 @@ function setPrintMode(mode){
   $('pageStyle').textContent = PAGE_CSS[mode];
 }
 function doPrint(mode){                    // 'dwg' | 'ord' | 'both'
+  const p=getParams();
+  if(getPrintWarnings(p,geometry(p)).length && !$('ackWarning').checked) return;
   setPrintMode(mode);
   // 差し替えたスタイルが反映されてから印刷ダイアログを開く
   requestAnimationFrame(()=> requestAnimationFrame(()=> window.print()));
@@ -1430,14 +1484,11 @@ $('btnPrintDwg').onclick  = ()=> doPrint('dwg');
 $('btnPrintOrd').onclick  = ()=> doPrint('ord');
 $('btnPrintBoth').onclick = ()=> doPrint('both');
 
-$('btnCalcHana').onclick = ()=>{
-  refresh();
-};
-
 function selectMode(mode){
   if(mode===activeMode) return;
   saveCurrentForm();
   activeMode = mode;
+  $('ackWarning').checked=false;
   document.body.classList.toggle('tile-mode', mode==='tile');
   writeForm(loadSavedForm(mode));
   $('tabNormal').classList.toggle('is-active', mode==='normal');
@@ -1453,7 +1504,8 @@ $('tabTile').onclick = ()=> selectMode('tile');
 $('btnReset').onclick = ()=>{
   if(!confirm('入力を既定値に戻します。よろしいですか？')) return;
   try{ localStorage.removeItem(STORAGE_KEYS[activeMode]); }catch(e){}
-  writeForm(DEFAULTS);
+  $('ackWarning').checked=false;
+  writeForm(loadSavedForm(activeMode));
   refresh();
 };
 
@@ -1478,7 +1530,7 @@ $('btnReset').onclick = ()=>{
 /* =========================================================
    5. PWA（オフライン動作と自動更新）
    ========================================================= */
-const APP_VERSION = '1.0.19';
+const APP_VERSION = '1.0.20';
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
