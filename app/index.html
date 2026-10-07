@@ -65,7 +65,8 @@
   .sizepair{display:flex;align-items:center;gap:7px;flex:1 1 0;min-width:0}
   .sizepair input[type=number]{flex:1 1 0;min-width:0;width:0}
   .sizepair .times{flex:0 0 auto;font-size:20px;font-weight:700;color:var(--sub)}
-  .fixcheck{display:flex;align-items:center;gap:4px;flex:0 0 auto;font-size:14px;font-weight:700;color:var(--sub);white-space:nowrap}
+  .material-row > label:first-child{flex:0 0 168px}
+  .row label.fixcheck{display:flex;align-items:center;gap:4px;flex:0 0 auto;font-size:14px;font-weight:700;color:var(--sub);white-space:nowrap}
   .fixcheck input{width:17px;height:17px;margin:0}
   .calc-row button{min-width:88px}
   textarea{resize:vertical;min-height:52px;line-height:1.5}
@@ -200,16 +201,16 @@
         <input type="checkbox" id="fixHanaShimo" hidden aria-hidden="true">
 
         <div class="normal-only">
-          <div class="row"><label>破風板</label><div class="sizepair"><input type="number" id="normalHafuWidth" data-material-for="tHafu" step="1" aria-label="破風板の巾"><span class="times">ｘ</span><input type="number" id="normalHafuHeight" data-material-for="wHafu" step="1" aria-label="破風板の成"></div><label class="fixcheck"><input type="checkbox" data-fixed-for="fixHafu">固定</label></div>
-          <div class="row"><label>鼻隠し（水上）</label><div class="sizepair"><input type="number" id="normalHanaKamiWidth" data-material-for="tHana" step="1" aria-label="水上鼻隠しの巾"><span class="times">ｘ</span><input type="number" id="normalHanaKamiHeight" data-material-for="hHanaKamiOrder" step="0.1" aria-label="水上鼻隠しの成"></div><label class="fixcheck"><input type="checkbox" data-fixed-for="fixHanaKami">固定</label></div>
-          <div class="row"><label>鼻隠し（水下）</label><div class="sizepair"><input type="number" id="normalHanaShimoWidth" data-material-for="tHana" step="1" aria-label="水下鼻隠しの巾"><span class="times">ｘ</span><input type="number" id="normalHanaShimoHeight" data-material-for="hHanaShimoOrder" step="0.1" aria-label="水下鼻隠しの成"></div><label class="fixcheck"><input type="checkbox" data-fixed-for="fixHanaShimo">固定</label></div>
+          <div class="row material-row"><label>破風板</label><div class="sizepair"><input type="number" id="normalHafuWidth" data-material-for="tHafu" step="1" aria-label="破風板の巾"><span class="times">ｘ</span><input type="number" id="normalHafuHeight" data-material-for="wHafu" step="1" aria-label="破風板の成"></div><label class="fixcheck"><input type="checkbox" data-fixed-for="fixHafu">固定</label></div>
+          <div class="row material-row"><label>鼻隠し（水上）</label><div class="sizepair"><input type="number" id="normalHanaKamiWidth" data-material-for="tHana" step="1" aria-label="水上鼻隠しの巾"><span class="times">ｘ</span><input type="number" id="normalHanaKamiHeight" data-material-for="hHanaKamiOrder" step="0.1" aria-label="水上鼻隠しの成"></div><label class="fixcheck"><input type="checkbox" data-fixed-for="fixHanaKami">固定</label></div>
+          <div class="row material-row"><label>鼻隠し（水下）</label><div class="sizepair"><input type="number" id="normalHanaShimoWidth" data-material-for="tHana" step="1" aria-label="水下鼻隠しの巾"><span class="times">ｘ</span><input type="number" id="normalHanaShimoHeight" data-material-for="hHanaShimoOrder" step="0.1" aria-label="水下鼻隠しの成"></div><label class="fixcheck"><input type="checkbox" data-fixed-for="fixHanaShimo">固定</label></div>
           <div class="row calc-row"><label></label><button class="mini" type="button" id="btnCalcHana">計算</button></div>
         </div>
 
         <div class="tile-only">
-          <div class="row"><label>鼻隠し（水下）</label><div class="sizepair"><input type="number" id="tileHanaShimoWidth" data-material-for="tHana" step="1" aria-label="水下鼻隠しの巾"><span class="times">ｘ</span><input type="number" id="tileHanaShimoHeight" data-material-for="hHanaShimoOrder" step="1" aria-label="水下鼻隠しの成"></div><label class="fixcheck"><input type="checkbox" data-fixed-for="fixHanaShimo">固定</label></div>
-          <div class="row"><label>破風板</label><div class="sizepair"><input type="number" id="tileHafuWidth" data-material-for="tHafu" step="1" aria-label="破風板の巾"><span class="times">ｘ</span><input type="number" id="tileHafuHeight" data-material-for="wHafu" step="1" aria-label="破風板の成"></div><label class="fixcheck"><input type="checkbox" data-fixed-for="fixHafu">固定</label></div>
-          <div class="row"><label>鼻隠し（水上）</label><div class="sizepair"><input type="number" id="tileHanaKamiWidth" data-material-for="tHana" step="1" aria-label="水上鼻隠しの巾"><span class="times">ｘ</span><input type="number" id="tileHanaKamiHeight" data-material-for="hHanaKamiOrder" step="1" aria-label="水上鼻隠しの成"></div><label class="fixcheck"><input type="checkbox" data-fixed-for="fixHanaKami">固定</label></div>
+          <div class="row material-row"><label>鼻隠し（水下）</label><div class="sizepair"><input type="number" id="tileHanaShimoWidth" data-material-for="tHana" step="1" aria-label="水下鼻隠しの巾"><span class="times">ｘ</span><input type="number" id="tileHanaShimoHeight" data-material-for="hHanaShimoOrder" step="1" aria-label="水下鼻隠しの成"></div><label class="fixcheck"><input type="checkbox" data-fixed-for="fixHanaShimo">固定</label></div>
+          <div class="row material-row"><label>破風板</label><div class="sizepair"><input type="number" id="tileHafuWidth" data-material-for="tHafu" step="1" aria-label="破風板の巾"><span class="times">ｘ</span><input type="number" id="tileHafuHeight" data-material-for="wHafu" step="1" aria-label="破風板の成"></div><label class="fixcheck"><input type="checkbox" data-fixed-for="fixHafu">固定</label></div>
+          <div class="row material-row"><label>鼻隠し（水上）</label><div class="sizepair"><input type="number" id="tileHanaKamiWidth" data-material-for="tHana" step="1" aria-label="水上鼻隠しの巾"><span class="times">ｘ</span><input type="number" id="tileHanaKamiHeight" data-material-for="hHanaKamiOrder" step="1" aria-label="水上鼻隠しの成"></div><label class="fixcheck"><input type="checkbox" data-fixed-for="fixHanaKami">固定</label></div>
           <div class="row calc-row"><label></label><button class="mini" type="button" id="btnCalcHafu">計算</button></div>
         </div>
         <input type="checkbox" id="tileHafuAuto" checked hidden aria-hidden="true">
@@ -1348,16 +1349,32 @@ function applyZoom(){
 // 入力欄をクリック（またはTabで移動）したら中身を全選択して、すぐ打ち直せるようにする
 (function(){
   const target = t => t && t.tagName==='INPUT' && (t.type==='number' || t.type==='text');
-  $('form').addEventListener('focusin', e=>{
+  const box = $('form');
+  let pointerScroll = null;
+  box.addEventListener('pointerdown', e=>{
+    pointerScroll = null;
+    if(!target(e.target)) return;
+    const inputRect=e.target.getBoundingClientRect(), boxRect=box.getBoundingClientRect();
+    if(inputRect.top>=boxRect.top && inputRect.bottom<=boxRect.bottom)
+      pointerScroll={element:e.target, top:box.scrollTop};
+  });
+  box.addEventListener('focusin', e=>{
     if(!target(e.target)) return;
     e.target.select();
     e.target._selectOnClick = true;
+    // 見えている入力欄をクリックしただけで、選択処理が一覧を動かさないようにする。
+    if(pointerScroll && pointerScroll.element===e.target){
+      const top=pointerScroll.top;
+      box.scrollTop=top;
+      requestAnimationFrame(()=>{ if(document.activeElement===e.target) box.scrollTop=top; });
+    }
+    pointerScroll=null;
   });
   // フォーカス直後の mouseup はカーソル位置を決めて選択を解除してしまうので抑える
-  $('form').addEventListener('mouseup', e=>{
+  box.addEventListener('mouseup', e=>{
     if(e.target && e.target._selectOnClick){ e.preventDefault(); e.target._selectOnClick = false; }
   }, true);
-  $('form').addEventListener('focusout', e=>{
+  box.addEventListener('focusout', e=>{
     if(e.target) e.target._selectOnClick = false;
   }, true);
 })();
@@ -1367,6 +1384,9 @@ $('form').addEventListener('input', e=>{
   if(target && !source.readOnly){
     const canonical=$(target);
     if(canonical) canonical.value=source.value;
+    // 成を直接入力した場合は、その部材を固定して図面へ反映する。
+    const fixedByHeight={wHafu:'fixHafu',hHanaShimoOrder:'fixHanaShimo',hHanaKamiOrder:'fixHanaKami'};
+    if(source.value!=='' && fixedByHeight[target]) $(fixedByHeight[target]).checked=true;
   }
   const fixedFor=source && source.dataset && source.dataset.fixedFor;
   if(fixedFor){
