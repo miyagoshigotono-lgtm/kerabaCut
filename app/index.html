@@ -62,6 +62,10 @@
     background:#eef1f5;color:#a3aebc;border-color:#e2e7ee;cursor:not-allowed}
   .row.off label{color:#a3aebc}
   .row.off .unit{color:#a3aebc}
+  .sizepair{display:flex;align-items:center;gap:7px;flex:1 1 0;min-width:0}
+  .sizepair input[type=number]{flex:1 1 0;min-width:0;width:0}
+  .sizepair .times{flex:0 0 auto;font-size:20px;font-weight:700;color:var(--sub)}
+  .calc-row button{min-width:88px}
   textarea{resize:vertical;min-height:52px;line-height:1.5}
   .unit{flex:0 0 36px;font-size:16px;color:var(--ink)}
   .chk{display:flex;align-items:center;gap:8px;font-size:16px;color:var(--ink);padding:5px 0;
@@ -183,11 +187,25 @@
         <legend>部材寸法（前提条件）</legend>
         <div class="row"><label>合板 厚</label><input type="number" id="tNoji" value="12" step="0.5"><span class="unit">mm</span></div>
         <div class="row"><label>垂木 成</label><input type="number" id="hTaruki" value="60" step="1"><span class="unit">mm</span></div>
-        <div class="row"><label>破風板 厚</label><input type="number" id="tHafu" value="30" step="1"><span class="unit">mm</span></div>
-        <div class="row"><label>破風板 成</label><input type="number" id="wHafu" value="150" step="1"><button class="mini tile-inline" type="button" id="btnCalcHafu">計算</button><span class="unit">mm</span></div>
-        <div class="row"><label>鼻隠し 厚</label><input type="number" id="tHana" value="30" step="1"><span class="unit">mm</span></div>
-        <div class="row normal-only"><label>鼻隠し 成</label><input type="number" id="hHanaOrder" value="" placeholder="自動" step="0.1"><button class="mini" type="button" id="btnCalcHana">計算</button><span class="unit">mm</span></div>
-        <div class="row tile-only"><label>水下鼻隠し 成</label><input type="number" id="tileHanaSOrder" value="175" step="1"><span class="unit">mm</span></div>
+        <input type="hidden" id="tHafu" value="30">
+        <input type="hidden" id="wHafu" value="150">
+        <input type="hidden" id="tHana" value="30">
+        <input type="hidden" id="hHanaOrder" value="">
+        <input type="hidden" id="tileHanaSOrder" value="175">
+
+        <div class="normal-only">
+          <div class="row"><label>破風板</label><div class="sizepair"><input type="number" id="normalHafuWidth" data-material-for="tHafu" step="1" aria-label="破風板の巾"><span class="times">ｘ</span><input type="number" id="normalHafuHeight" data-material-for="wHafu" step="1" aria-label="破風板の成"></div></div>
+          <div class="row"><label>鼻隠し（水上）</label><div class="sizepair"><input type="number" id="normalHanaKamiWidth" data-material-for="tHana" step="1" aria-label="水上鼻隠しの巾"><span class="times">ｘ</span><input type="number" id="normalHanaKamiHeight" data-material-for="hHanaOrder" step="0.1" aria-label="水上鼻隠しの成"></div></div>
+          <div class="row"><label>鼻隠し（水下）</label><div class="sizepair"><input type="number" id="normalHanaShimoWidth" data-material-for="tHana" step="1" aria-label="水下鼻隠しの巾"><span class="times">ｘ</span><input type="number" id="normalHanaShimoHeight" data-material-for="hHanaOrder" step="0.1" aria-label="水下鼻隠しの成"></div></div>
+          <div class="row calc-row"><label></label><button class="mini" type="button" id="btnCalcHana">計算</button></div>
+        </div>
+
+        <div class="tile-only">
+          <div class="row"><label>鼻隠し（水下）</label><div class="sizepair"><input type="number" id="tileHanaShimoWidth" data-material-for="tHana" step="1" aria-label="水下鼻隠しの巾"><span class="times">ｘ</span><input type="number" id="tileHanaShimoHeight" data-material-for="tileHanaSOrder" step="1" aria-label="水下鼻隠しの成"></div></div>
+          <div class="row"><label>破風板</label><div class="sizepair"><input type="number" id="tileHafuWidth" data-material-for="tHafu" step="1" aria-label="破風板の巾"><span class="times">ｘ</span><input type="number" id="tileHafuHeight" data-material-for="wHafu" step="1" aria-label="破風板の成"></div></div>
+          <div class="row"><label>鼻隠し（水上）</label><div class="sizepair"><input type="number" id="tileHanaKamiWidth" data-material-for="tHana" step="1" aria-label="水上鼻隠しの巾"><span class="times">ｘ</span><input type="number" id="tileHanaKamiHeight" readonly aria-label="水上鼻隠しの成"></div></div>
+          <div class="row calc-row"><label></label><button class="mini" type="button" id="btnCalcHafu">計算</button></div>
+        </div>
         <input type="checkbox" id="tileHafuAuto" checked hidden aria-hidden="true">
       </fieldset>
 
@@ -1178,6 +1196,28 @@ const $ = id => document.getElementById(id);
 
 function getParams(){ return Object.assign({}, DEFAULTS, readForm(), {roofMode:activeMode}); }
 
+// 部材寸法は「巾×成」で見せるが、既存の計算・保存形式は維持する。
+// 鼻隠しの巾は水上・水下で共通のため、どちらを編集しても同じ値へ連動させる。
+function syncMaterialInputs(p,g){
+  const set = (id,v)=>{
+    const el=$(id);
+    if(el && document.activeElement!==el) el.value=(v===null||v===undefined) ? '' : fmt(v);
+  };
+  set('normalHafuWidth', p.tHafu);
+  set('normalHafuHeight', g.wHafu);
+  set('normalHanaKamiWidth', p.tHana);
+  set('normalHanaShimoWidth', p.tHana);
+  set('normalHanaKamiHeight', g.hHanaOrderK);
+  set('normalHanaShimoHeight', g.hHanaOrderS);
+
+  set('tileHanaShimoWidth', p.tHana);
+  set('tileHanaShimoHeight', g.hHanaOrderS);
+  set('tileHafuWidth', p.tHafu);
+  set('tileHafuHeight', g.wHafu);
+  set('tileHanaKamiWidth', p.tHana);
+  set('tileHanaKamiHeight', g.hHanaOrderK);
+}
+
 // 使わない部材の寸法欄は入力できないようにする
 function updateEnabled(p){
   const off = (id, disabled)=>{
@@ -1188,17 +1228,24 @@ function updateEnabled(p){
     if(row) row.classList.toggle('off', disabled);
   };
   const noHana = (p.hanaShimo==='none' && p.hanaKami==='none');
-  off('tHana', noHana);
-  off('hHanaOrder', noHana);
+  off('normalHanaKamiWidth', p.hanaKami==='none');
+  off('normalHanaKamiHeight', p.hanaKami==='none');
+  off('normalHanaShimoWidth', p.hanaShimo==='none');
+  off('normalHanaShimoHeight', p.hanaShimo==='none');
+  off('tileHanaKamiWidth', p.hanaKami==='none');
+  off('tileHanaKamiHeight', p.hanaKami==='none');
+  off('tileHanaShimoWidth', p.hanaShimo==='none');
+  off('tileHanaShimoHeight', p.hanaShimo==='none');
   $('btnCalcHana').disabled = noHana;
 
   const noHafu = (p.hafu === 'none');
-  off('tHafu', noHafu);
-  off('wHafu', noHafu);
+  off('normalHafuWidth', noHafu);
+  off('normalHafuHeight', noHafu);
+  off('tileHafuWidth', noHafu);
+  off('tileHafuHeight', noHafu);
   off('clearance', noHafu);          // 破風板が無ければケラバカットも無い
 
   if(p.roofMode==='tile'){
-    off('tileHanaSOrder', p.hanaShimo==='none');
     $('btnCalcHafu').disabled = noHafu || p.hanaShimo==='none';
     [['hafu', noHafu], ['hanaShimo', p.hanaShimo==='none'], ['hanaKami', p.hanaKami==='none']].forEach(([part, disabled])=>{
       document.querySelectorAll(`[data-offset-part="${part}"] select, [data-offset-part="${part}"] input`).forEach(el=>el.disabled=disabled);
@@ -1213,6 +1260,7 @@ function refresh(){
   const g = geometry(p);
   // 瓦の自動計算中は、実際に作図へ使った破風板成を数値欄にも戻す。
   if(p.roofMode==='tile' && p.tileHafuAuto) $('wHafu').value = Math.round(g.wHafu*10)/10;
+  syncMaterialInputs(p,g);
   updateEnabled(p);
   $('sheet').innerHTML = renderSVG(p);
   $('sheet').className = 'sheet ' + (p.orient==='portrait' ? 'port' : 'land');
@@ -1278,6 +1326,15 @@ function applyZoom(){
     if(e.target) e.target._selectOnClick = false;
   }, true);
 })();
+
+$('form').addEventListener('input', e=>{
+  const source=e.target, target=source && source.dataset && source.dataset.materialFor;
+  if(!target || source.readOnly) return;
+  const canonical=$(target);
+  if(!canonical) return;
+  canonical.value=source.value;
+  if(target==='wHafu' && activeMode==='tile') $('tileHafuAuto').checked=false;
+});
 
 $('form').addEventListener('input', refresh);
 $('form').addEventListener('change', refresh);
