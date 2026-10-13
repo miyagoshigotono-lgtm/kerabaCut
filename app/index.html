@@ -526,25 +526,26 @@ function geometry(p){
     const base = (isTile && ref==='noji') ? lnC : lnD;
     const d = isTile ? num(value,0) : 0;
     const shift = (isTile && dir==='perpendicular') ? d/cos : d;
+    // line は実部材の作図位置、guideLine は選択した内面・外面の寸法基準。
+    // タツの水平な天端では両者が板厚分だけずれる場合がある。
     return {ref:(isTile && ref==='noji')?'noji':'taruki', dir:(isTile && dir==='perpendicular')?'perpendicular':'vertical',
             side:(isTile && side==='outer')?'outer':'inner', value:d,
-            line:x=>base(x)-shift-extraVerticalShift};
+            line:x=>base(x)-shift-extraVerticalShift,
+            guideLine:x=>base(x)-shift};
   };
   const offHafu = topOffset(p.tileHafuRef, p.tileHafuDir, 'inner', p.tileHafuOffset);
-  // タツの水下鼻隠しは、内寸・鉛直のとき内側天端から垂直寸法を取る。
-  // 上端が水平のため、内側までの板厚ぶんの勾配落ちを補正する。
-  const shimoInnerVerticalAdjust =
-    (isTile && modeS==='tatsu' && p.tileHanaSDir==='vertical' && p.tileHanaSSide!=='outer')
+  // タツの水下鼻隠しは上端が水平。内寸なら、方向に関係なく内側天端を基準線へ合わせる。
+  const shimoInnerFaceAdjust =
+    (isTile && modeS==='tatsu' && p.tileHanaSSide!=='outer')
       ? tHana*tan : 0;
   const offS = topOffset(p.tileHanaSRef, p.tileHanaSDir, p.tileHanaSSide, p.tileHanaSOffset,
-                         shimoInnerVerticalAdjust);
-  // 水上も外寸・鉛直では外側天端から垂直寸法を取る。
-  // タツの上端が水平なので、水下内寸と同じ条件になるよう板厚ぶんを補正する。
-  const kamiOuterVerticalAdjust =
-    (isTile && modeK==='tatsu' && p.tileHanaKDir==='vertical' && p.tileHanaKSide==='outer')
+                         shimoInnerFaceAdjust);
+  // 水上のタツは、外寸なら外側天端を基準線へ合わせる。
+  const kamiOuterFaceAdjust =
+    (isTile && modeK==='tatsu' && p.tileHanaKSide==='outer')
       ? tHana*tan : 0;
   const offK = topOffset(p.tileHanaKRef, p.tileHanaKDir, p.tileHanaKSide, p.tileHanaKOffset,
-                         kamiOuterVerticalAdjust);
+                         kamiOuterFaceAdjust);
   const lnHafu = offHafu.line;
 
   // 鼻隠しの下端を破風板下端へ揃えたときの成を返す。
@@ -756,7 +757,7 @@ function buildContent(p, g){
   if(g.hasHafu) [g.bS.aX,g.bK.aX].forEach(x=>{ xs.push(x); ys.push(g.lnA(x)); });
   // 瓦の点線ガイドと天端位置も縮尺計算へ含め、用紙端からはみ出さないようにする。
   if(g.isTile){
-    [g.offsets.hafu.line, g.offsets.shimo.line, g.offsets.kami.line].forEach(lineY=>{
+    [g.offsets.hafu.guideLine, g.offsets.shimo.guideLine, g.offsets.kami.guideLine].forEach(lineY=>{
       [0, g.totalW].forEach(x=>{ xs.push(x); ys.push(lineY(x)); });
     });
   }
@@ -928,9 +929,8 @@ function buildContent(p, g){
   const makeOffsetPlan = (item, x, off)=>{
     const refLine = item.ref==='noji' ? g.lnC : g.lnD;
     const a=[x,refLine(x)];
-    const b=item.dir==='perpendicular'
-      ? [x-item.value*g.sin, refLine(x)-item.value*g.cos]
-      : [x,refLine(x)-item.value];
+    const targetX=item.dir==='perpendicular' ? x-item.value*g.sin : x;
+    const b=[targetX,item.guideLine(targetX)];
     const A=P2(a), B=P2(b), label=fmt(item.value);
     return {A,B,off,label,box:dimTextBox(A[0],A[1],B[0],B[1],off,label)};
   };
@@ -992,10 +992,10 @@ function buildContent(p, g){
     // 鼻隠しラインは、両端の鼻隠しを少し超える長さまで引く。
     const hanaGuideL = -g.tHana*0.3, hanaGuideR = g.totalW+g.tHana*0.3;
     if(g.bS.poly && g.bK.poly && sameHanaOffset){
-      guide('鼻隠しライン', g.offsets.shimo.line, hanaGuideL, hanaGuideR, g.totalW*.60, -1);
+      guide('鼻隠しライン', g.offsets.shimo.guideLine, hanaGuideL, hanaGuideR, g.totalW*.60, -1);
     }else{
-      if(g.bK.poly) guide('水上鼻隠しライン', g.offsets.kami.line, hanaGuideL, hanaGuideR, g.totalW*.68, -1);
-      if(g.bS.poly) guide('水下鼻隠しライン', g.offsets.shimo.line, hanaGuideL, hanaGuideR, g.totalW*.12, +1);
+      if(g.bK.poly) guide('水上鼻隠しライン', g.offsets.kami.guideLine, hanaGuideL, hanaGuideR, g.totalW*.68, -1);
+      if(g.bS.poly) guide('水下鼻隠しライン', g.offsets.shimo.guideLine, hanaGuideL, hanaGuideR, g.totalW*.12, +1);
     }
     // 破風板注記は鼻隠し注記との間隔を確保した位置へ置く。
     if(g.hasHafu) guide('破風板ライン', g.lnHafu, g.totalW*0.12, g.totalW*0.90,
