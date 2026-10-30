@@ -25,6 +25,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: 別アプリのキャッシュを保護することを確認
+        run: node --test tests/service-worker.test.cjs
+
       - name: バージョンを刻む
         run: |
           set -e
