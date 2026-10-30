@@ -34,7 +34,7 @@ jobs:
           VER="$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
           echo "版: $VER"
           sed -i "s/const APP_VERSION = '[^']*'/const APP_VERSION = '${VER}'/" app/index.html
-          sed -i "s/keraba-v[^']*'/keraba-v${VER}'/"                          app/sw.js
+          sed -i "s/const VERSION = 'keraba-v[^']*'/const VERSION = 'keraba-v${VER}'/" app/sw.js
           printf '{"version":"%s"}\n' "$VER" > app/version.json
           # 3ファイルが一致しているか確認（ずれると更新ループになるため）
           A=$(grep -o "APP_VERSION = '[^']*'" app/index.html | sed "s/.*'\(.*\)'/\1/")
@@ -42,6 +42,9 @@ jobs:
           C=$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' app/version.json)
           echo "index.html=$A  sw.js=$B  version.json=$C"
           test "$A" = "$B" -a "$B" = "$C"
+
+      - name: 公開用の版番号を付けた後もキャッシュ保護を確認
+        run: node --test tests/service-worker.test.cjs
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
