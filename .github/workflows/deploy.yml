@@ -26,7 +26,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: 別アプリのキャッシュを保護することを確認
-        run: node --test tests/service-worker.test.cjs
+        run: node --test tests/service-worker.test.cjs tests/migration.test.cjs
 
       - name: バージョンを刻む
         run: |
@@ -44,7 +44,7 @@ jobs:
           test "$A" = "$B" -a "$B" = "$C"
 
       - name: 公開用の版番号を付けた後もキャッシュ保護を確認
-        run: node --test tests/service-worker.test.cjs
+        run: node --test tests/service-worker.test.cjs tests/migration.test.cjs
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
