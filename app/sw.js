@@ -4,7 +4,7 @@
          → サーバー側のファイルを差し替えるだけで全員が更新される。 */
 const VERSION = 'keraba-v1.0.20';
 const ASSETS = ['./', './index.html', './manifest.webmanifest',
-                './icon-192.png', './icon-512.png', './icon-512-maskable.png', './migrate.js'];
+                './icon-192.png', './icon-512.png', './icon-512-maskable.png', './migrate.js?v=20261117-2'];
 
 self.addEventListener('install', e=>{
   e.waitUntil((async ()=>{
