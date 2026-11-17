@@ -63,8 +63,12 @@ test('移行先の接続待ちが時間切れになったら旧画面を表示�
 
 test('旧画面を描く前に移行を開始し、既存アイコンの識別子と画像を維持して統合版を直接開く', () => {
   const html = fs.readFileSync(path.join(__dirname, '../app/index.html'), 'utf8');
-  assert.ok(html.indexOf('html.migrating body{visibility:hidden}') < html.indexOf('<script src="migrate.js"></script>'));
-  assert.ok(html.indexOf('<script src="migrate.js"></script>') < html.indexOf('<body'));
+  const script = html.match(/<script src="(migrate\.js\?v=\d{8}-\d+)"><\/script>/);
+  assert.ok(script, '古い転送処理をブラウザキャッシュから使わないよう版番号を指定する');
+  assert.ok(html.indexOf('html.migrating body{visibility:hidden}') < script.index);
+  assert.ok(script.index < html.indexOf('<body'));
+  const worker = fs.readFileSync(path.join(__dirname, '../app/sw.js'), 'utf8');
+  assert.ok(worker.includes("'./" + script[1] + "'"), '同じ版の転送処理をオフライン用にも保存する');
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '../app/manifest.webmanifest'), 'utf8'));
   const base = 'https://miyagoshigotono-lgtm.github.io/kerabaCut/manifest.webmanifest';
   assert.equal(new URL(manifest.id, base).href, 'https://miyagoshigotono-lgtm.github.io/kerabaCut/index.html');
